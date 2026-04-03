@@ -1,12 +1,12 @@
 ---
-title: Support Triage OpenEnv
+title: Support Triage Env
 sdk: docker
 app_port: 8000
 tags:
   - openenv
 ---
 
-# Support Triage OpenEnv
+# Support Triage Env
 
 `support_triage_env` is a real-world customer support triage simulator for OpenEnv. The agent works a queue of realistic support tickets, classifies them, prioritizes them, drafts safe customer replies, routes issues to the correct internal team, and decides when a ticket should be escalated versus resolved.
 
