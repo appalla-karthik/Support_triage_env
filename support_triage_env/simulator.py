@@ -20,18 +20,18 @@ from support_triage_env.models import (
     TicketRecord,
     TicketStatus,
 )
-from support_triage_env.tasks import TaskScenario, get_task_scenarios
+from support_triage_env.tasks import TaskScenario, build_task_scenario, task_ids
 
 
 class SupportTriageSimulator:
     """Local Gym-style simulator with step/reset/state APIs."""
 
     def __init__(self):
-        self._scenarios: dict[str, TaskScenario] = get_task_scenarios()
-        self._graders: dict[str, BaseTaskGrader] = build_graders(self._scenarios)
         self._rng = random.Random(0)
-        self._task_order = list(self._scenarios.keys())
+        self._task_order = task_ids()
         self._task_index = 0
+        self._scenario: TaskScenario | None = None
+        self._grader: BaseTaskGrader | None = None
         self._last_reward = SupportTriageReward(
             value=0.0,
             task_score=0.0,
@@ -56,10 +56,12 @@ class SupportTriageSimulator:
             task_id = self._task_order[self._task_index % len(self._task_order)]
             self._task_index += 1
 
-        if task_id not in self._scenarios:
+        if task_id not in self._task_order:
             raise ValueError(f"Unknown task_id '{task_id}'")
 
-        scenario = self._scenarios[task_id]
+        scenario = build_task_scenario(task_id, self._rng)
+        self._scenario = scenario
+        self._grader = build_graders({task_id: scenario})[task_id]
         self._state = SupportTriageState(
             episode_id=episode_id or str(uuid.uuid4()),
             step_count=0,
@@ -94,8 +96,10 @@ class SupportTriageSimulator:
     ) -> tuple[SupportTriageObservation, SupportTriageReward, bool, dict[str, Any]]:
         if not self._state.task_id:
             raise RuntimeError("Call reset() before step().")
+        if self._scenario is None or self._grader is None:
+            raise RuntimeError("No active scenario loaded. Call reset() before step().")
 
-        scenario = self._scenarios[self._state.task_id]
+        scenario = self._scenario
         previous_score = self._state.progress.score
         invalid_reasons: list[str] = []
         repeated_penalty = 0.0
@@ -213,7 +217,7 @@ class SupportTriageSimulator:
             )
         )
 
-        grade = self._graders[self._state.task_id].grade(self._state)
+        grade = self._grader.grade(self._state)
         self._state.progress = grade
         self._state.final_score = grade.score
 

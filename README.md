@@ -74,7 +74,7 @@ Final grader scores are deterministic and clipped to `0.0-1.0`.
 
 ## Tasks
 
-Three deterministic tasks are included, each with a programmatic grader:
+Three seeded task families are included, each with a programmatic grader. Each reset keeps the same policy goal, but can vary ticket IDs, customer details, phrasing, and queue composition while remaining reproducible under a fixed seed:
 
 1. `billing_refund_easy`
    Straightforward duplicate-charge refund. The agent should classify the issue, route it to `billing_ops`, reply with an apology and refund timeline, then resolve it with `refund_submitted`.
@@ -90,6 +90,56 @@ python -m venv .venv
 .venv\Scripts\activate
 python -m pip install -e .
 ```
+
+Reproduce a specific randomized episode with a seed:
+
+```python
+from support_triage_env import SupportTriageSimulator
+
+env = SupportTriageSimulator()
+observation = env.reset(task_id="billing_refund_easy", seed=7)
+```
+
+Generate a larger synthetic RL-style dataset:
+
+```bash
+synthetic-dataset --examples-per-task 5000 --seed 42 --output outputs/synthetic_support_triage_dataset.jsonl
+```
+
+This produces a JSONL corpus with labeled ticket records, expected routing, expected terminal actions, reply requirements, and policy constraints. With the default three task families, `--examples-per-task 5000` generates more than 15,000 labeled rows because the hard task can emit multiple tickets per scenario.
+
+Build a larger mixed training set by combining synthetic data with the local files in the repo `datasets` folder:
+
+```bash
+build-training-data ^
+  --synthetic-examples-per-task 5000 ^
+  --synthetic-seed 42 ^
+  --output outputs\combined_training_dataset.jsonl
+```
+
+By default, the pipeline now uses these local dataset files when present:
+
+- `datasets/customer_support_tickets.csv`
+- `datasets/customer_support_tickets_200k.csv`
+- `datasets/complaints.csv`
+- `datasets/complaint_data.csv`
+
+You can still pass additional CSVs manually for the notebook-derived sources:
+
+- `multilingual-customer-support-tickets-using-xlm-r.ipynb`
+- `customer-support-ticket-tagger.ipynb`
+- `banking-consumer-complaint-analysis.ipynb`
+
+Train a lightweight baseline classifier and report accuracy:
+
+```bash
+train-support-classifier ^
+  --synthetic-examples-per-task 5000 ^
+  --synthetic-seed 42 ^
+  --report-output outputs\training_report.json
+```
+
+This writes an accuracy report with per-class metrics to `outputs\training_report.json`.
 
 Run the server locally:
 
@@ -115,9 +165,54 @@ Validate a running server:
 openenv validate --url http://localhost:8000
 ```
 
-## Baseline Inference
+## Competition Inference
 
-The baseline runner uses the OpenAI Python client and reads credentials from `OPENAI_API_KEY`.
+The required submission entrypoint is the root-level `inference.py`. It uses the OpenAI Python client and reads the evaluator-compatible environment variables:
+
+- `API_BASE_URL`: model API base URL
+- `MODEL_NAME`: model identifier
+- `HF_TOKEN`: API token used by the OpenAI client
+- `ENV_BASE_URL`: optional URL of a running environment server
+- `LOCAL_IMAGE_NAME`: optional Docker image name used when `ENV_BASE_URL` is not set
+
+Run against a locally running server:
+
+```bash
+set API_BASE_URL=https://router.huggingface.co/v1
+set MODEL_NAME=Qwen/Qwen2.5-72B-Instruct
+set HF_TOKEN=your_token_here
+set ENV_BASE_URL=http://localhost:8000
+python inference.py
+```
+
+Or run using a local Docker image:
+
+```bash
+set API_BASE_URL=https://router.huggingface.co/v1
+set MODEL_NAME=Qwen/Qwen2.5-72B-Instruct
+set HF_TOKEN=your_token_here
+set LOCAL_IMAGE_NAME=support-triage-openenv
+python inference.py
+```
+
+The script emits structured stdout logs in `[START]`, `[STEP]`, and `[END]` format for evaluator compatibility.
+It also writes a local JSON artifact to `outputs/inference_last_run.json` so you can confirm:
+
+- `final_score`
+- `cumulative_reward`
+- `steps`
+- `success`
+- detailed grader `progress`
+
+Inspect the saved score report with:
+
+```bash
+type outputs\inference_last_run.json
+```
+
+## Local Baseline Runner
+
+For local experimentation, the package also includes a baseline runner that executes all three tasks directly against the in-process simulator. This helper uses `OPENAI_API_KEY`.
 
 ```bash
 set OPENAI_API_KEY=your_key_here
@@ -128,7 +223,7 @@ It writes results to `outputs/baseline_scores.json`.
 
 ### Baseline Scores
 
-This workspace did not have `OPENAI_API_KEY` configured, so the OpenAI baseline could not be executed here. Once credentials are present, the script emits:
+This workspace did not have model credentials configured, so inference was not executed here. Once credentials are present, the baseline script emits:
 
 - per-task score
 - per-task cumulative reward
@@ -150,12 +245,33 @@ docker build -t support-triage-openenv .
 docker run -p 8000:8000 support-triage-openenv
 ```
 
+## Pre-Submission Checklist
+
+Before submitting, verify the same surfaces the evaluator is likely to inspect:
+
+```bash
+pytest
+openenv validate .
+python -m server.app
+openenv validate --url http://localhost:8000
+python inference.py
+```
+
+After `python inference.py`, confirm the final score locally:
+
+```bash
+type outputs\inference_last_run.json
+```
+
 ## Files
 
 - `support_triage_env/models.py`: typed action, observation, reward, and state models
 - `support_triage_env/simulator.py`: local `step/reset/state` simulator
 - `support_triage_env/graders.py`: deterministic task graders
 - `support_triage_env/tasks.py`: task definitions and expectations
+- `support_triage_env/synthetic_dataset.py`: large synthetic dataset generator for RL-style training or evaluation
+- `support_triage_env/training_data.py`: merges synthetic data with external customer-support CSVs into a unified training corpus
+- `support_triage_env/train_classifier.py`: trains a lightweight TF-IDF + logistic regression baseline and reports accuracy
 - `support_triage_env/baseline/run_baseline.py`: OpenAI baseline script
 - `server/app.py`: OpenEnv FastAPI entrypoint
 - `openenv.yaml`: OpenEnv manifest

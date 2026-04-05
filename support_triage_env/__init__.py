@@ -12,6 +12,7 @@ from support_triage_env.models import (
     TicketTeam,
 )
 from support_triage_env.simulator import SupportTriageSimulator
+from support_triage_env.synthetic_dataset import build_synthetic_dataset
 
 __all__ = [
     "ActionType",
@@ -26,5 +27,6 @@ __all__ = [
     "TicketPriority",
     "TicketStatus",
     "TicketTeam",
+    "build_synthetic_dataset",
 ]
 

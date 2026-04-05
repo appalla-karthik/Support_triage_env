@@ -6,3 +6,6 @@ outputs/
 baseline_scores.json
 openenv_support_triage.egg-info/
 .openenv_upstream/
+datasets/*.csv
+datasets/*.txt
+datasets/*.ipynb
