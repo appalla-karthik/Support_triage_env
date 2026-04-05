@@ -7,6 +7,7 @@ from support_triage_env.models import (
     ActionType,
     GradingSnapshot,
     SupportTriageState,
+    TicketCategory,
     TicketRecord,
     TicketStatus,
 )
@@ -60,11 +61,10 @@ class BaseTaskGrader(ABC):
                 return ticket
         raise KeyError(ticket_id)
 
-
 class BillingRefundEasyGrader(BaseTaskGrader):
     def grade(self, state: SupportTriageState) -> GradingSnapshot:
-        ticket = self._ticket_by_id(state, "TCK-1001")
-        expectation = self.scenario.expectations["TCK-1001"]
+        expectation = next(iter(self.scenario.expectations.values()))
+        ticket = self._ticket_by_id(state, expectation.ticket_id)
 
         components: dict[str, float] = {}
         penalties: dict[str, float] = {}
@@ -127,8 +127,8 @@ class BillingRefundEasyGrader(BaseTaskGrader):
 
 class ExportOutageMediumGrader(BaseTaskGrader):
     def grade(self, state: SupportTriageState) -> GradingSnapshot:
-        ticket = self._ticket_by_id(state, "TCK-2001")
-        expectation = self.scenario.expectations["TCK-2001"]
+        expectation = next(iter(self.scenario.expectations.values()))
+        ticket = self._ticket_by_id(state, expectation.ticket_id)
 
         components: dict[str, float] = {}
         penalties: dict[str, float] = {}
@@ -205,10 +205,18 @@ class ExportOutageMediumGrader(BaseTaskGrader):
 
 class SecurityAndRefundHardGrader(BaseTaskGrader):
     def grade(self, state: SupportTriageState) -> GradingSnapshot:
-        security_ticket = self._ticket_by_id(state, "TCK-3001")
-        billing_ticket = self._ticket_by_id(state, "TCK-3002")
-        security_expectation = self.scenario.expectations["TCK-3001"]
-        billing_expectation = self.scenario.expectations["TCK-3002"]
+        security_expectation = next(
+            expectation
+            for expectation in self.scenario.expectations.values()
+            if expectation.category == TicketCategory.SECURITY_ACCOUNT_TAKEOVER
+        )
+        billing_expectation = next(
+            expectation
+            for expectation in self.scenario.expectations.values()
+            if expectation.category == TicketCategory.BILLING_REFUND
+        )
+        security_ticket = self._ticket_by_id(state, security_expectation.ticket_id)
+        billing_ticket = self._ticket_by_id(state, billing_expectation.ticket_id)
 
         components: dict[str, float] = {}
         penalties: dict[str, float] = {}
@@ -221,12 +229,14 @@ class SecurityAndRefundHardGrader(BaseTaskGrader):
             if entry.action_type not in {ActionType.VIEW_TICKET, ActionType.FINISH}:
                 first_meaningful_ticket = entry.ticket_id
                 break
-        if first_meaningful_ticket == "TCK-3001":
+        if first_meaningful_ticket == security_expectation.ticket_id:
             components["priority_order"] = 0.15
             satisfied.append("Handled urgent security issue before routine billing work")
         else:
-            outstanding.append("Prioritize TCK-3001 before TCK-3002")
-            if first_meaningful_ticket == "TCK-3002":
+            outstanding.append(
+                f"Prioritize {security_expectation.ticket_id} before {billing_expectation.ticket_id}"
+            )
+            if first_meaningful_ticket == billing_expectation.ticket_id:
                 penalties["priority_miss"] = 0.08
                 violations.append("Worked the lower-priority billing ticket first")
 
@@ -234,19 +244,21 @@ class SecurityAndRefundHardGrader(BaseTaskGrader):
             components["security_category"] = 0.10
             satisfied.append("Classified security incident correctly")
         else:
-            outstanding.append("Set TCK-3001 category to security_account_takeover")
+            outstanding.append(
+                f"Set {security_expectation.ticket_id} category to security_account_takeover"
+            )
 
         if security_ticket.current_priority == security_expectation.priority:
             components["security_priority"] = 0.10
             satisfied.append("Marked security ticket urgent")
         else:
-            outstanding.append("Set TCK-3001 priority to urgent")
+            outstanding.append(f"Set {security_expectation.ticket_id} priority to urgent")
 
         if security_ticket.assigned_team == security_expectation.team:
             components["security_team"] = 0.10
             satisfied.append("Assigned trust_safety")
         else:
-            outstanding.append("Assign TCK-3001 to trust_safety")
+            outstanding.append(f"Assign {security_expectation.ticket_id} to trust_safety")
 
         security_ratio, security_hits, security_missing = _reply_score(
             security_ticket,
@@ -276,7 +288,7 @@ class SecurityAndRefundHardGrader(BaseTaskGrader):
             components["security_terminal"] = 0.05
             satisfied.append("Escalated security ticket")
         else:
-            outstanding.append("Escalate TCK-3001")
+            outstanding.append(f"Escalate {security_expectation.ticket_id}")
 
         if _contains_any(escalation_text, security_expectation.forbidden_phrases):
             penalties["unsafe_security_advice"] = 0.25
@@ -290,19 +302,21 @@ class SecurityAndRefundHardGrader(BaseTaskGrader):
             components["billing_category"] = 0.05
             satisfied.append("Classified refund ticket correctly")
         else:
-            outstanding.append("Set TCK-3002 category to billing_refund")
+            outstanding.append(
+                f"Set {billing_expectation.ticket_id} category to billing_refund"
+            )
 
         if billing_ticket.current_priority == billing_expectation.priority:
             components["billing_priority"] = 0.05
             satisfied.append("Marked refund ticket medium priority")
         else:
-            outstanding.append("Set TCK-3002 priority to medium")
+            outstanding.append(f"Set {billing_expectation.ticket_id} priority to medium")
 
         if billing_ticket.assigned_team == billing_expectation.team:
             components["billing_team"] = 0.05
             satisfied.append("Assigned billing refund to billing_ops")
         else:
-            outstanding.append("Assign TCK-3002 to billing_ops")
+            outstanding.append(f"Assign {billing_expectation.ticket_id} to billing_ops")
 
         billing_ratio, billing_hits, billing_missing = _reply_score(
             billing_ticket,
@@ -321,7 +335,9 @@ class SecurityAndRefundHardGrader(BaseTaskGrader):
             components["billing_terminal"] = 0.05
             satisfied.append("Resolved billing ticket with refund_submitted")
         else:
-            outstanding.append("Resolve TCK-3002 with refund_submitted")
+            outstanding.append(
+                f"Resolve {billing_expectation.ticket_id} with refund_submitted"
+            )
 
         if _contains_any(
             _all_outbound_text(billing_ticket), billing_expectation.forbidden_phrases
@@ -341,12 +357,17 @@ class SecurityAndRefundHardGrader(BaseTaskGrader):
 
 
 def build_graders(scenarios: dict[str, TaskScenario]) -> dict[str, BaseTaskGrader]:
-    return {
-        "billing_refund_easy": BillingRefundEasyGrader(scenarios["billing_refund_easy"]),
-        "export_outage_medium": ExportOutageMediumGrader(
+    graders: dict[str, BaseTaskGrader] = {}
+    if "billing_refund_easy" in scenarios:
+        graders["billing_refund_easy"] = BillingRefundEasyGrader(
+            scenarios["billing_refund_easy"]
+        )
+    if "export_outage_medium" in scenarios:
+        graders["export_outage_medium"] = ExportOutageMediumGrader(
             scenarios["export_outage_medium"]
-        ),
-        "security_and_refund_hard": SecurityAndRefundHardGrader(
+        )
+    if "security_and_refund_hard" in scenarios:
+        graders["security_and_refund_hard"] = SecurityAndRefundHardGrader(
             scenarios["security_and_refund_hard"]
-        ),
-    }
+        )
+    return graders
