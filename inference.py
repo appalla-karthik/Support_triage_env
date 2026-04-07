@@ -2,12 +2,19 @@ import asyncio
 import json
 import os
 import textwrap
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
 from openai import APIStatusError, OpenAI
 
-from support_triage_env import SupportTriageAction, SupportTriageEnv
+from support_triage_env import (
+    SupportTriageAction,
+    SupportTriageEnv,
+    SupportTriageObservation,
+    SupportTriageSimulator,
+    SupportTriageState,
+)
 
 API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
 MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
@@ -110,6 +117,40 @@ def write_run_artifact(payload: dict) -> None:
         output_path = PROJECT_ROOT / output_path
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+
+@dataclass
+class LocalStepResult:
+    observation: SupportTriageObservation
+    reward: float | None
+    done: bool
+
+
+class LocalEnvAdapter:
+    def __init__(self) -> None:
+        self._simulator = SupportTriageSimulator()
+
+    async def reset(self, task_id: str | None = None) -> LocalStepResult:
+        observation = self._simulator.reset(task_id=task_id)
+        return LocalStepResult(
+            observation=observation,
+            reward=0.0,
+            done=bool(observation.done),
+        )
+
+    async def step(self, action: SupportTriageAction) -> LocalStepResult:
+        observation, reward, done, _ = self._simulator.step(action)
+        return LocalStepResult(
+            observation=observation,
+            reward=float(reward.value),
+            done=done,
+        )
+
+    async def state(self) -> SupportTriageState:
+        return self._simulator.state()
+
+    async def close(self) -> None:
+        return None
 
 
 def normalize_action_payload(data: dict) -> dict:
@@ -672,31 +713,27 @@ async def create_env() -> SupportTriageEnv:
         await env.connect()
         return env
 
-    if not LOCAL_IMAGE_NAME:
-        raise RuntimeError(
-            "Set LOCAL_IMAGE_NAME for Docker-based execution or ENV_BASE_URL for a running server."
-        )
+    if LOCAL_IMAGE_NAME:
+        return await SupportTriageEnv.from_docker_image(LOCAL_IMAGE_NAME)
 
-    return await SupportTriageEnv.from_docker_image(LOCAL_IMAGE_NAME)
+    return LocalEnvAdapter()
 
 
 async def main() -> None:
-    if not HF_TOKEN:
-        raise RuntimeError("HF_TOKEN, OPENAI_API_KEY, or API_KEY is required for inference.")
-
-    client = OpenAI(base_url=API_BASE_URL, api_key=HF_TOKEN)
-    env = await create_env()
-
+    client = OpenAI(base_url=API_BASE_URL, api_key=HF_TOKEN) if HF_TOKEN else None
+    env = None
     rewards: list[float] = []
     steps_taken = 0
     success = False
     final_score = 0.0
     cumulative_reward = 0.0
     final_progress: dict = {"score": 0.0}
+    fatal_error: str | None = None
 
     log_start(task=TASK_NAME, env=BENCHMARK, model=MODEL_NAME)
 
     try:
+        env = await create_env()
         result = await env.reset(task_id=TASK_NAME)
 
         for step in range(1, MAX_STEPS + 1):
@@ -709,23 +746,28 @@ async def main() -> None:
             action = _scripted_policy_action(observation_payload, state_payload)
 
             if action is None:
-                try:
-                    action = get_model_action(
-                        client,
-                        observation_payload,
-                        state_payload,
-                    )
-                except APIStatusError as exc:
-                    error = sanitize_single_line(str(exc))
-                    log_step(
-                        step=step,
-                        action="model_request_failed",
-                        reward=0.0,
-                        done=False,
-                        error=error,
-                    )
-                    steps_taken = step - 1 if step > 0 else 0
-                    break
+                if client is None:
+                    action = _recommended_next_action(state_payload)
+                else:
+                    try:
+                        action = get_model_action(
+                            client,
+                            observation_payload,
+                            state_payload,
+                        )
+                    except APIStatusError as exc:
+                        error = sanitize_single_line(str(exc))
+                        log_step(
+                            step=step,
+                            action="model_request_failed",
+                            reward=0.0,
+                            done=False,
+                            error=error,
+                        )
+                        steps_taken = step - 1 if step > 0 else 0
+                        break
+                    except Exception:
+                        action = _recommended_next_action(state_payload)
             action = postprocess_action(
                 action,
                 observation_payload,
@@ -753,6 +795,7 @@ async def main() -> None:
                 )
                 rewards.append(reward)
                 steps_taken = step
+                fatal_error = error
                 break
 
             rewards.append(reward)
@@ -768,35 +811,46 @@ async def main() -> None:
             if done:
                 break
 
-        state = await env.state()
-        final_score = float(state.final_score)
-        cumulative_reward = float(state.cumulative_reward)
-        final_progress = state.progress.model_dump(mode="json")
-        success = final_score >= SUCCESS_SCORE_THRESHOLD
+        if env is not None:
+            state = await env.state()
+            final_score = float(state.final_score)
+            cumulative_reward = float(state.cumulative_reward)
+            final_progress = state.progress.model_dump(mode="json")
+            success = final_score >= SUCCESS_SCORE_THRESHOLD
+    except Exception as exc:
+        fatal_error = sanitize_single_line(str(exc))
     finally:
-        try:
-            await env.close()
-        finally:
-            write_run_artifact(
-                {
-                    "task": TASK_NAME,
-                    "benchmark": BENCHMARK,
-                    "model": MODEL_NAME,
-                    "success": success,
-                    "steps": steps_taken,
-                    "final_score": round(final_score, 4),
-                    "cumulative_reward": round(cumulative_reward, 4),
-                    "rewards": [round(reward, 4) for reward in rewards],
-                    "progress": final_progress,
-                    "success_score_threshold": SUCCESS_SCORE_THRESHOLD,
-                }
-            )
-            log_end(
-                success=success,
-                steps=steps_taken,
-                score=final_score,
-                rewards=rewards,
-            )
+        if env is not None:
+            try:
+                await env.close()
+            except Exception as exc:
+                if fatal_error is None:
+                    fatal_error = sanitize_single_line(str(exc))
+        write_run_artifact(
+            {
+                "task": TASK_NAME,
+                "benchmark": BENCHMARK,
+                "model": MODEL_NAME,
+                "success": success,
+                "steps": steps_taken,
+                "final_score": round(final_score, 4),
+                "cumulative_reward": round(cumulative_reward, 4),
+                "rewards": [round(reward, 4) for reward in rewards],
+                "progress": final_progress,
+                "success_score_threshold": SUCCESS_SCORE_THRESHOLD,
+                "error": fatal_error,
+                "used_api_client": bool(client),
+                "used_env_base_url": bool(ENV_BASE_URL),
+                "used_local_image_name": bool(LOCAL_IMAGE_NAME),
+                "used_inprocess_fallback": not ENV_BASE_URL and not LOCAL_IMAGE_NAME,
+            }
+        )
+        log_end(
+            success=success,
+            steps=steps_taken,
+            score=final_score,
+            rewards=rewards,
+        )
 
 
 if __name__ == "__main__":
