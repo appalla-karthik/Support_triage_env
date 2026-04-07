@@ -30,36 +30,37 @@ async def root() -> str:
     <style>
       :root {
         color-scheme: light;
-        --bg: #f4f6f8;
-        --card: rgba(255, 255, 255, 0.94);
+        --bg: #f3f6f8;
+        --card: rgba(255, 255, 255, 0.96);
         --card-strong: #ffffff;
-        --ink: #18323e;
-        --muted: #657987;
-        --accent: #214f64;
-        --accent-soft: #e8f0f4;
-        --line: rgba(33, 79, 100, 0.10);
-        --success: #2f7b62;
-        --shadow: 0 18px 40px rgba(24, 50, 62, 0.08);
+        --ink: #142f3b;
+        --muted: #617887;
+        --accent: #1f4c61;
+        --accent-soft: #e7f0f4;
+        --line: rgba(31, 76, 97, 0.11);
+        --success: #2d7a61;
+        --shadow: 0 18px 46px rgba(20, 47, 59, 0.08);
       }
       * { box-sizing: border-box; }
       body {
         margin: 0;
         font-family: "Aptos", "Segoe UI Variable", "Segoe UI", Arial, sans-serif;
         background:
-          radial-gradient(circle at 10% 10%, rgba(204, 182, 145, 0.12) 0, transparent 25%),
-          radial-gradient(circle at 88% 12%, rgba(111, 151, 168, 0.09) 0, transparent 24%),
+          radial-gradient(circle at 10% 10%, rgba(204, 182, 145, 0.10) 0, transparent 22%),
+          radial-gradient(circle at 88% 12%, rgba(111, 151, 168, 0.08) 0, transparent 22%),
           #f4f6f8;
         color: var(--ink);
       }
       main {
-        max-width: 1120px;
-        margin: 22px auto;
-        padding: 0 16px 24px;
+        width: calc(100% - 32px);
+        max-width: 1440px;
+        margin: 16px auto;
+        padding: 0 0 20px;
       }
       .shell {
         background: var(--card);
         border: 1px solid var(--line);
-        border-radius: 24px;
+        border-radius: 22px;
         box-shadow: var(--shadow);
         overflow: hidden;
       }
@@ -67,23 +68,24 @@ async def root() -> str:
         display: flex;
         justify-content: space-between;
         align-items: center;
-        gap: 12px;
-        padding: 18px 22px;
+        gap: 14px;
+        padding: 16px 20px;
         border-bottom: 1px solid var(--line);
-        background: rgba(255, 255, 255, 0.78);
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 251, 252, 0.92));
       }
       .eyebrow {
         display: inline-flex;
         align-items: center;
         gap: 8px;
-        padding: 8px 12px;
+        padding: 7px 11px;
         border-radius: 999px;
         background: var(--accent-soft);
         color: var(--accent);
-        font-size: 12px;
+        font-size: 11px;
         font-weight: 800;
         text-transform: uppercase;
-        letter-spacing: 0.35px;
+        letter-spacing: 0.45px;
       }
       .status-dot {
         width: 9px;
@@ -92,24 +94,24 @@ async def root() -> str:
         background: var(--success);
       }
       h1 {
-        margin: 12px 0 6px;
-        font-size: 34px;
-        line-height: 1.05;
-        letter-spacing: -0.7px;
+        margin: 10px 0 4px;
+        font-size: 32px;
+        line-height: 1.08;
+        letter-spacing: -0.6px;
       }
       .subtitle {
         margin: 0;
         color: var(--muted);
-        font-size: 15px;
+        font-size: 14px;
         line-height: 1.55;
-        max-width: 680px;
+        max-width: 760px;
       }
       .status-card {
-        min-width: 220px;
+        min-width: 240px;
         padding: 12px 14px;
         border: 1px solid var(--line);
-        border-radius: 16px;
-        background: var(--card-strong);
+        border-radius: 14px;
+        background: linear-gradient(180deg, #ffffff, #fbfdfe);
       }
       .status-card strong {
         display: block;
@@ -126,20 +128,20 @@ async def root() -> str:
       }
       .layout {
         display: grid;
-        grid-template-columns: 320px minmax(0, 1fr);
-        gap: 16px;
-        padding: 16px;
+        grid-template-columns: 340px minmax(0, 1fr);
+        gap: 14px;
+        padding: 14px;
       }
       .panel {
         border: 1px solid var(--line);
-        border-radius: 18px;
+        border-radius: 16px;
         padding: 16px;
-        background: rgba(255, 255, 255, 0.78);
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(252, 253, 254, 0.86));
       }
       .panel h2 {
         margin: 0 0 10px;
         font-size: 18px;
-        letter-spacing: -0.2px;
+        letter-spacing: -0.15px;
       }
       .panel p,
       .panel li,
@@ -158,9 +160,9 @@ async def root() -> str:
         color: var(--ink);
       }
       .quick-code {
-        background: #f7fafb;
+        background: #f7fafc;
         border: 1px solid var(--line);
-        border-radius: 14px;
+        border-radius: 12px;
         padding: 12px;
         white-space: pre-wrap;
         font-family: Consolas, "SFMono-Regular", monospace;
@@ -179,8 +181,8 @@ async def root() -> str:
         background: var(--accent-soft);
         color: var(--accent);
         border-radius: 999px;
-        padding: 8px 12px;
-        font-size: 13px;
+        padding: 7px 11px;
+        font-size: 12px;
         font-weight: 700;
       }
       .playground {
@@ -190,7 +192,7 @@ async def root() -> str:
       .toolbar {
         display: grid;
         grid-template-columns: 1fr 120px 140px;
-        gap: 10px;
+        gap: 9px;
       }
       select,
       input,
@@ -203,13 +205,13 @@ async def root() -> str:
       textarea {
         width: 100%;
         border: 1px solid var(--line);
-        border-radius: 14px;
-        padding: 12px 13px;
+        border-radius: 12px;
+        padding: 11px 12px;
         background: var(--card-strong);
         color: var(--ink);
       }
       textarea {
-        min-height: 176px;
+        min-height: 168px;
         resize: vertical;
         font-family: Consolas, "SFMono-Regular", monospace;
         font-size: 13px;
@@ -218,29 +220,35 @@ async def root() -> str:
       button,
       .link-btn {
         border: 1px solid var(--line);
-        border-radius: 14px;
-        padding: 11px 15px;
+        border-radius: 12px;
+        padding: 10px 14px;
         background: var(--card-strong);
         color: var(--accent);
         font-weight: 700;
         cursor: pointer;
         text-decoration: none;
+        transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
+      }
+      button:hover,
+      .link-btn:hover {
+        transform: translateY(-1px);
+        border-color: rgba(31, 76, 97, 0.20);
       }
       button.primary {
         border-color: transparent;
-        background: linear-gradient(135deg, #1f5366, #2b6a7d);
+        background: linear-gradient(135deg, #1e5367, #2a6679);
         color: white;
-        box-shadow: 0 10px 22px rgba(31, 83, 102, 0.14);
+        box-shadow: 0 10px 22px rgba(31, 83, 102, 0.12);
       }
       .status-line {
         display: grid;
         grid-template-columns: 1fr 0.8fr 0.7fr;
-        gap: 10px;
+        gap: 9px;
       }
       .pill {
         min-height: 48px;
         border: 1px solid var(--line);
-        border-radius: 14px;
+        border-radius: 12px;
         background: var(--card-strong);
         padding: 12px 14px;
       }
@@ -254,11 +262,11 @@ async def root() -> str:
       .json-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 14px;
+        gap: 12px;
       }
       .json-box {
         border: 1px solid var(--line);
-        border-radius: 16px;
+        border-radius: 14px;
         background: #f7fafb;
         overflow: hidden;
       }
@@ -278,7 +286,7 @@ async def root() -> str:
       pre {
         margin: 0;
         padding: 14px;
-        min-height: 240px;
+        min-height: 260px;
         max-height: 440px;
         overflow: auto;
         font-family: Consolas, "SFMono-Regular", monospace;
@@ -301,11 +309,12 @@ async def root() -> str:
       }
       @media (max-width: 720px) {
         main {
-          padding: 0 12px 20px;
+          width: calc(100% - 20px);
+          padding: 0 0 18px;
         }
         .topbar,
         .layout {
-          padding: 14px;
+          padding: 12px;
         }
         .toolbar {
           grid-template-columns: 1fr;
@@ -314,7 +323,7 @@ async def root() -> str:
           min-width: 0;
         }
         h1 {
-          font-size: 30px;
+          font-size: 28px;
         }
       }
     </style>
