@@ -55,22 +55,22 @@ async def root() -> str:
         color: var(--ink);
       }
       main {
-        max-width: 1180px;
-        margin: 42px auto;
-        padding: 0 24px 42px;
+        max-width: 980px;
+        margin: 34px auto;
+        padding: 0 20px 32px;
       }
       .card {
         background: var(--card);
         border: 1px solid var(--line);
-        border-radius: 30px;
+        border-radius: 28px;
         box-shadow: var(--shadow);
         backdrop-filter: blur(12px);
-        padding: 34px;
+        padding: 28px;
       }
       .hero {
         display: grid;
-        grid-template-columns: 1.45fr 0.9fr;
-        gap: 22px;
+        grid-template-columns: 1.35fr 0.85fr;
+        gap: 18px;
         align-items: stretch;
       }
       .eyebrow {
@@ -94,10 +94,10 @@ async def root() -> str:
         box-shadow: 0 0 0 6px rgba(42, 124, 96, 0.12);
       }
       h1 {
-        margin: 18px 0 14px;
-        font-size: 52px;
-        line-height: 1.02;
-        letter-spacing: -1.2px;
+        margin: 16px 0 12px;
+        font-size: 44px;
+        line-height: 1.04;
+        letter-spacing: -0.9px;
       }
       p {
         color: var(--muted);
@@ -107,7 +107,7 @@ async def root() -> str:
       .lead {
         max-width: 720px;
         margin: 0;
-        font-size: 18px;
+        font-size: 17px;
       }
       .chips, .links {
         display: flex;
@@ -142,13 +142,13 @@ async def root() -> str:
       .stats {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 14px;
+        gap: 12px;
       }
       .stat {
         background: var(--card-strong);
         border: 1px solid var(--line);
-        border-radius: 22px;
-        padding: 20px;
+        border-radius: 18px;
+        padding: 16px;
       }
       .stat .label {
         color: var(--muted);
@@ -159,7 +159,7 @@ async def root() -> str:
       }
       .stat .value {
         margin-top: 8px;
-        font-size: 32px;
+        font-size: 28px;
         font-weight: 800;
         letter-spacing: -0.8px;
       }
@@ -172,18 +172,18 @@ async def root() -> str:
       .section-grid {
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 18px;
-        margin-top: 24px;
+        gap: 14px;
+        margin-top: 18px;
       }
       .panel {
         border: 1px solid var(--line);
-        border-radius: 22px;
-        padding: 22px;
+        border-radius: 18px;
+        padding: 18px;
         background: rgba(255, 255, 255, 0.76);
       }
       .panel h2 {
         margin: 0 0 10px;
-        font-size: 22px;
+        font-size: 20px;
         letter-spacing: -0.3px;
       }
       .panel ul {
@@ -198,14 +198,14 @@ async def root() -> str:
       .meta-strip {
         display: grid;
         grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 14px;
-        margin-top: 22px;
+        gap: 12px;
+        margin-top: 18px;
       }
       .meta-item {
         background: rgba(255, 255, 255, 0.72);
         border: 1px solid var(--line);
-        border-radius: 18px;
-        padding: 16px 18px;
+        border-radius: 16px;
+        padding: 14px 16px;
       }
       .meta-item strong {
         display: block;
@@ -216,7 +216,7 @@ async def root() -> str:
         letter-spacing: 0.45px;
       }
       .meta-item span {
-        font-size: 18px;
+        font-size: 16px;
         font-weight: 700;
       }
       code {
@@ -266,13 +266,13 @@ async def root() -> str:
             </div>
             <h1>Support Triage Environment</h1>
             <p class="lead">
-              A production-style customer support simulation for training and evaluating
-              agents that must classify, prioritize, respond, escalate, and resolve
-              real operational tickets under deterministic graders with shaped rewards.
+              A real-world customer support simulator for agents that classify,
+              prioritize, reply, escalate, and resolve tickets under deterministic
+              graders with shaped rewards.
             </p>
             <div class="chips">
               <span class="chip">Customer Support Operations</span>
-              <span class="chip">3 Difficulty Levels</span>
+              <span class="chip">Easy to Hard Tasks</span>
               <span class="chip">Deterministic Graders</span>
               <span class="chip">Reward Shaping</span>
             </div>
@@ -287,22 +287,22 @@ async def root() -> str:
             <article class="stat">
               <div class="label">Tasks</div>
               <div class="value">3</div>
-              <div class="note">Easy, medium, and hard support workflows with distinct grading logic.</div>
+              <div class="note">Easy, medium, and hard workflows with deterministic scoring.</div>
             </article>
             <article class="stat">
               <div class="label">HTTP Surface</div>
               <div class="value">OpenEnv</div>
-              <div class="note">Typed simulation endpoints for reset, step, state, metadata, and schema.</div>
+              <div class="note">Typed endpoints for reset, step, state, metadata, and schema.</div>
             </article>
             <article class="stat">
               <div class="label">Primary Objective</div>
               <div class="value">Safe Triage</div>
-              <div class="note">Encourages compliant responses, correct routing, and thoughtful escalation.</div>
+              <div class="note">Rewards compliant replies, correct routing, and thoughtful escalation.</div>
             </article>
             <article class="stat">
               <div class="label">Deployment</div>
               <div class="value">Docker</div>
-              <div class="note">Containerized and ready for Hugging Face Spaces and OpenEnv validation.</div>
+              <div class="note">Containerized for Hugging Face Spaces and OpenEnv validation.</div>
             </article>
           </div>
         </div>
@@ -330,28 +330,27 @@ async def root() -> str:
           <article class="panel">
             <h2>Core Endpoints</h2>
             <ul>
-              <li><code>/reset</code> starts a new graded episode</li>
+              <li><code>/reset</code> starts a new episode</li>
               <li><code>/step</code> applies the next agent action</li>
               <li><code>/state</code> exposes current environment state</li>
-              <li><code>/metadata</code> describes the environment</li>
-              <li><code>/schema</code> returns typed action and observation schemas</li>
+              <li><code>/metadata</code> and <code>/schema</code> describe the environment</li>
             </ul>
           </article>
           <article class="panel">
             <h2>Included Tasks</h2>
             <ul>
-              <li><strong>billing_refund_easy</strong>: classify, reply, and resolve a duplicate-charge refund</li>
-              <li><strong>export_outage_medium</strong>: escalate a blocking reporting outage to engineering</li>
-              <li><strong>security_and_refund_hard</strong>: prioritize account takeover before routine billing work</li>
+              <li><strong>billing_refund_easy</strong>: duplicate-charge refund handling</li>
+              <li><strong>export_outage_medium</strong>: engineering escalation for reporting outage</li>
+              <li><strong>security_and_refund_hard</strong>: urgent security triage before billing work</li>
             </ul>
           </article>
           <article class="panel">
             <h2>Evaluation Focus</h2>
             <ul>
-              <li>Correct category, priority, and team assignment</li>
-              <li>Policy-compliant and customer-safe written communication</li>
-              <li>Meaningful partial-credit rewards over the full trajectory</li>
-              <li>Penalties for unsafe advice, invalid actions, and repeated loops</li>
+              <li>Correct category, priority, and routing</li>
+              <li>Customer-safe, policy-compliant replies</li>
+              <li>Partial-credit rewards across the full trajectory</li>
+              <li>Penalties for unsafe or repeated actions</li>
             </ul>
           </article>
         </div>
