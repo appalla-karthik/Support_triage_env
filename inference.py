@@ -19,7 +19,7 @@ from support_triage_env import (
 MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
 LOCAL_IMAGE_NAME = os.getenv("LOCAL_IMAGE_NAME")
 ENV_BASE_URL = os.getenv("ENV_BASE_URL")
-TASK_NAME = os.getenv("SUPPORT_TRIAGE_TASK", "billing_refund_easy")
+TASK_NAME = os.getenv("SUPPORT_TRIAGE_TASK")
 BENCHMARK = os.getenv("SUPPORT_TRIAGE_BENCHMARK", "support_triage_env")
 MAX_STEPS = int(os.getenv("MAX_STEPS", "12"))
 TEMPERATURE = float(os.getenv("TEMPERATURE", "0.0"))
@@ -46,6 +46,11 @@ SECURITY_FORBIDDEN_PHRASES = [
     "send us your password",
     "send us the code",
     "share the one-time code",
+]
+DEFAULT_TASKS = [
+    "billing_refund_easy",
+    "export_outage_medium",
+    "security_and_refund_hard",
 ]
 
 
@@ -111,6 +116,12 @@ def write_run_artifact(payload: dict) -> None:
         output_path = PROJECT_ROOT / output_path
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+
+def configured_task_names() -> list[str]:
+    if not TASK_NAME:
+        return list(DEFAULT_TASKS)
+    return [task.strip() for task in TASK_NAME.split(",") if task.strip()]
 
 
 @dataclass
@@ -742,9 +753,11 @@ async def create_env() -> SupportTriageEnv:
     return LocalEnvAdapter()
 
 
-async def main() -> None:
-    client = create_model_client()
-    env = None
+async def run_task(
+    env: SupportTriageEnv | LocalEnvAdapter,
+    client: OpenAI | None,
+    task_name: str,
+) -> dict:
     rewards: list[float] = []
     steps_taken = 0
     success = False
@@ -752,19 +765,11 @@ async def main() -> None:
     cumulative_reward = 0.0
     final_progress: dict = {"score": 0.0}
     fatal_error: str | None = None
-    proxy_request_attempted = False
-    proxy_request_succeeded = False
 
-    log_start(task=TASK_NAME, env=BENCHMARK, model=MODEL_NAME)
+    log_start(task=task_name, env=BENCHMARK, model=MODEL_NAME)
 
     try:
-        env = await create_env()
-        result = await env.reset(task_id=TASK_NAME)
-
-        if client is not None:
-            proxy_request_attempted = True
-            ensure_proxy_request(client)
-            proxy_request_succeeded = True
+        result = await env.reset(task_id=task_name)
 
         for step in range(1, MAX_STEPS + 1):
             if result.done:
@@ -795,6 +800,7 @@ async def main() -> None:
                             error=error,
                         )
                         steps_taken = step - 1 if step > 0 else 0
+                        fatal_error = error
                         break
                     except Exception:
                         action = _recommended_next_action(state_payload)
@@ -841,12 +847,51 @@ async def main() -> None:
             if done:
                 break
 
-        if env is not None:
-            state = await env.state()
-            final_score = float(state.final_score)
-            cumulative_reward = float(state.cumulative_reward)
-            final_progress = state.progress.model_dump(mode="json")
-            success = final_score >= SUCCESS_SCORE_THRESHOLD
+        state = await env.state()
+        final_score = float(state.final_score)
+        cumulative_reward = float(state.cumulative_reward)
+        final_progress = state.progress.model_dump(mode="json")
+        success = final_score >= SUCCESS_SCORE_THRESHOLD
+    except Exception as exc:
+        fatal_error = sanitize_single_line(str(exc))
+
+    log_end(
+        success=success,
+        steps=steps_taken,
+        score=final_score,
+        rewards=rewards,
+    )
+    return {
+        "task": task_name,
+        "success": success,
+        "steps": steps_taken,
+        "final_score": round(final_score, 4),
+        "cumulative_reward": round(cumulative_reward, 4),
+        "rewards": [round(reward, 4) for reward in rewards],
+        "progress": final_progress,
+        "error": fatal_error,
+    }
+
+
+async def main() -> None:
+    client = create_model_client()
+    env = None
+    task_results: list[dict] = []
+    fatal_error: str | None = None
+    proxy_request_attempted = False
+    proxy_request_succeeded = False
+    task_names = configured_task_names()
+
+    try:
+        env = await create_env()
+
+        if client is not None:
+            proxy_request_attempted = True
+            ensure_proxy_request(client)
+            proxy_request_succeeded = True
+
+        for task_name in task_names:
+            task_results.append(await run_task(env, client, task_name))
     except Exception as exc:
         fatal_error = sanitize_single_line(str(exc))
     finally:
@@ -856,17 +901,29 @@ async def main() -> None:
             except Exception as exc:
                 if fatal_error is None:
                     fatal_error = sanitize_single_line(str(exc))
+
+        successful_tasks = sum(1 for item in task_results if item["success"])
+        mean_score = (
+            sum(item["final_score"] for item in task_results) / len(task_results)
+            if task_results
+            else 0.0
+        )
+        total_reward = sum(item["cumulative_reward"] for item in task_results)
+        total_steps = sum(item["steps"] for item in task_results)
+        summary_progress = {
+            "task_count": len(task_results),
+            "successful_tasks": successful_tasks,
+        }
         write_run_artifact(
             {
-                "task": TASK_NAME,
                 "benchmark": BENCHMARK,
                 "model": MODEL_NAME,
-                "success": success,
-                "steps": steps_taken,
-                "final_score": round(final_score, 4),
-                "cumulative_reward": round(cumulative_reward, 4),
-                "rewards": [round(reward, 4) for reward in rewards],
-                "progress": final_progress,
+                "success": successful_tasks == len(task_results) and bool(task_results),
+                "steps": total_steps,
+                "final_score": round(mean_score, 4),
+                "cumulative_reward": round(total_reward, 4),
+                "rewards": [item["rewards"] for item in task_results],
+                "progress": summary_progress,
                 "success_score_threshold": SUCCESS_SCORE_THRESHOLD,
                 "error": fatal_error,
                 "used_api_client": bool(client),
@@ -875,13 +932,10 @@ async def main() -> None:
                 "used_env_base_url": bool(ENV_BASE_URL),
                 "used_local_image_name": bool(LOCAL_IMAGE_NAME),
                 "used_inprocess_fallback": not ENV_BASE_URL and not LOCAL_IMAGE_NAME,
+                "task_count": len(task_results),
+                "successful_tasks": successful_tasks,
+                "tasks": task_results,
             }
-        )
-        log_end(
-            success=success,
-            steps=steps_taken,
-            score=final_score,
-            rewards=rewards,
         )
 
 

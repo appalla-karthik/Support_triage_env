@@ -155,6 +155,8 @@ class SupportTriageAction(Action):
 
 
 class SupportTriageObservation(Observation):
+    reward: float = 0.0
+    done: bool = False
     task: TaskCard
     instructions: list[str] = Field(default_factory=list)
     policy_hints: list[str] = Field(default_factory=list)
@@ -166,6 +168,8 @@ class SupportTriageObservation(Observation):
 
 
 class SupportTriageState(State):
+    episode_id: str | None = None
+    step_count: int = 0
     task_id: str | None = None
     difficulty: Literal["easy", "medium", "hard"] | None = None
     objective: str = ""
