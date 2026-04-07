@@ -171,18 +171,22 @@ The required submission entrypoint is the root-level `inference.py`. It uses the
 
 - `API_BASE_URL`: model API base URL
 - `MODEL_NAME`: model identifier
-- `HF_TOKEN`: Hugging Face router token when using Inference Providers
-- `OPENAI_API_KEY`: accepted alternative for direct OpenAI-compatible usage
-- `API_KEY`: secondary fallback key name accepted by the script
+- `API_KEY`: model API key provided by the evaluator
 - `ENV_BASE_URL`: optional URL of a running environment server
 - `LOCAL_IMAGE_NAME`: optional Docker image name used when `ENV_BASE_URL` is not set
+
+For competition submissions, `inference.py` initializes the client strictly with
+`base_url=os.environ["API_BASE_URL"]` and `api_key=os.environ["API_KEY"]`, then
+makes an initial chat completion through that proxy before running the task loop.
+Do not substitute `HF_TOKEN`, `OPENAI_API_KEY`, or any hardcoded provider URL in
+the submission entrypoint.
 
 Run against a locally running server:
 
 ```bash
 set API_BASE_URL=https://router.huggingface.co/v1
 set MODEL_NAME=Qwen/Qwen2.5-72B-Instruct
-set HF_TOKEN=your_token_here
+set API_KEY=your_token_here
 set ENV_BASE_URL=http://localhost:8000
 python inference.py
 ```
@@ -192,7 +196,7 @@ Or run using a local Docker image:
 ```bash
 set API_BASE_URL=https://router.huggingface.co/v1
 set MODEL_NAME=Qwen/Qwen2.5-72B-Instruct
-set HF_TOKEN=your_token_here
+set API_KEY=your_token_here
 set LOCAL_IMAGE_NAME=support-triage-openenv
 python inference.py
 ```

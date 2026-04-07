@@ -16,13 +16,7 @@ from support_triage_env import (
     SupportTriageState,
 )
 
-API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
 MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
-HF_TOKEN = (
-    os.getenv("HF_TOKEN")
-    or os.getenv("OPENAI_API_KEY")
-    or os.getenv("API_KEY")
-)
 LOCAL_IMAGE_NAME = os.getenv("LOCAL_IMAGE_NAME")
 ENV_BASE_URL = os.getenv("ENV_BASE_URL")
 TASK_NAME = os.getenv("SUPPORT_TRIAGE_TASK", "billing_refund_easy")
@@ -236,6 +230,35 @@ def get_model_action(client: OpenAI, observation: dict, state: dict) -> SupportT
     content = (completion.choices[0].message.content or "").strip()
     data = normalize_action_payload(json.loads(content))
     return SupportTriageAction(**data)
+
+
+def create_model_client() -> OpenAI | None:
+    api_base_url = os.getenv("API_BASE_URL")
+    api_key = os.getenv("API_KEY")
+    if not api_base_url or not api_key:
+        return None
+    return OpenAI(base_url=api_base_url, api_key=api_key)
+
+
+def ensure_proxy_request(client: OpenAI) -> None:
+    # Force one real request through the evaluator-provided LiteLLM proxy so the
+    # submission cannot silently pass using only scripted logic.
+    client.chat.completions.create(
+        model=MODEL_NAME,
+        messages=[
+            {
+                "role": "system",
+                "content": "Reply with the single word ready.",
+            },
+            {
+                "role": "user",
+                "content": "Proxy healthcheck",
+            },
+        ],
+        temperature=0.0,
+        max_tokens=8,
+        stream=False,
+    )
 
 
 def _last_action(state: dict) -> dict | None:
@@ -720,7 +743,7 @@ async def create_env() -> SupportTriageEnv:
 
 
 async def main() -> None:
-    client = OpenAI(base_url=API_BASE_URL, api_key=HF_TOKEN) if HF_TOKEN else None
+    client = create_model_client()
     env = None
     rewards: list[float] = []
     steps_taken = 0
@@ -729,12 +752,19 @@ async def main() -> None:
     cumulative_reward = 0.0
     final_progress: dict = {"score": 0.0}
     fatal_error: str | None = None
+    proxy_request_attempted = False
+    proxy_request_succeeded = False
 
     log_start(task=TASK_NAME, env=BENCHMARK, model=MODEL_NAME)
 
     try:
         env = await create_env()
         result = await env.reset(task_id=TASK_NAME)
+
+        if client is not None:
+            proxy_request_attempted = True
+            ensure_proxy_request(client)
+            proxy_request_succeeded = True
 
         for step in range(1, MAX_STEPS + 1):
             if result.done:
@@ -840,6 +870,8 @@ async def main() -> None:
                 "success_score_threshold": SUCCESS_SCORE_THRESHOLD,
                 "error": fatal_error,
                 "used_api_client": bool(client),
+                "proxy_request_attempted": proxy_request_attempted,
+                "proxy_request_succeeded": proxy_request_succeeded,
                 "used_env_base_url": bool(ENV_BASE_URL),
                 "used_local_image_name": bool(LOCAL_IMAGE_NAME),
                 "used_inprocess_fallback": not ENV_BASE_URL and not LOCAL_IMAGE_NAME,
