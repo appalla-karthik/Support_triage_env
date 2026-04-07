@@ -59,6 +59,6 @@ class SupportTriageOpenEnvEnvironment(
                 "task graders and shaped rewards."
             ),
             version="0.1.0",
-            author="OpenAI Codex",
+            author="Karthik Appalla",
         )
 
