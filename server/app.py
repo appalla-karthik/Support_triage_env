@@ -30,34 +30,34 @@ async def root() -> str:
     <style>
       :root {
         color-scheme: light;
-        --bg: #f3efe8;
-        --bg-mesh-a: rgba(240, 183, 92, 0.18);
-        --bg-mesh-b: rgba(92, 150, 168, 0.15);
-        --card: rgba(255, 252, 247, 0.92);
-        --card-strong: #fffdf9;
-        --ink: #193541;
-        --muted: #5d7580;
-        --accent: #1e5567;
-        --accent-soft: #e2eef2;
-        --line: rgba(30, 85, 103, 0.12);
-        --success: #2a7c60;
-        --shadow: 0 24px 60px rgba(25, 53, 65, 0.10);
+        --bg: #f4f6f7;
+        --bg-mesh-a: rgba(90, 128, 148, 0.10);
+        --bg-mesh-b: rgba(207, 180, 139, 0.12);
+        --card: rgba(255, 255, 255, 0.94);
+        --card-strong: #ffffff;
+        --ink: #16303d;
+        --muted: #647987;
+        --accent: #234d63;
+        --accent-soft: #e7eff3;
+        --line: rgba(35, 77, 99, 0.10);
+        --success: #2b7a63;
+        --shadow: 0 20px 44px rgba(22, 48, 61, 0.08);
       }
       * { box-sizing: border-box; }
       body {
         margin: 0;
-        font-family: "Segoe UI", Arial, sans-serif;
+        font-family: "Aptos", "Segoe UI Variable", "Segoe UI", Arial, sans-serif;
         background:
-          radial-gradient(circle at 12% 8%, var(--bg-mesh-a) 0, transparent 26%),
-          radial-gradient(circle at 88% 10%, var(--bg-mesh-b) 0, transparent 24%),
-          radial-gradient(circle at 82% 92%, rgba(134, 188, 206, 0.12) 0, transparent 26%),
+          radial-gradient(circle at 10% 10%, var(--bg-mesh-b) 0, transparent 24%),
+          radial-gradient(circle at 88% 12%, var(--bg-mesh-a) 0, transparent 22%),
+          radial-gradient(circle at 82% 88%, rgba(139, 165, 176, 0.08) 0, transparent 24%),
           var(--bg);
         color: var(--ink);
       }
       main {
-        max-width: 980px;
-        margin: 34px auto;
-        padding: 0 20px 32px;
+        max-width: 1080px;
+        margin: 28px auto;
+        padding: 0 18px 24px;
       }
       .card {
         background: var(--card);
@@ -65,12 +65,12 @@ async def root() -> str:
         border-radius: 28px;
         box-shadow: var(--shadow);
         backdrop-filter: blur(12px);
-        padding: 28px;
+        padding: 24px;
       }
       .hero {
         display: grid;
-        grid-template-columns: 1.35fr 0.85fr;
-        gap: 18px;
+        grid-template-columns: 1.5fr 0.9fr;
+        gap: 16px;
         align-items: stretch;
       }
       .eyebrow {
@@ -83,7 +83,7 @@ async def root() -> str:
         color: var(--accent);
         font-size: 13px;
         font-weight: 800;
-        letter-spacing: 0.4px;
+        letter-spacing: 0.32px;
         text-transform: uppercase;
       }
       .status-dot {
@@ -94,26 +94,26 @@ async def root() -> str:
         box-shadow: 0 0 0 6px rgba(42, 124, 96, 0.12);
       }
       h1 {
-        margin: 16px 0 12px;
-        font-size: 44px;
-        line-height: 1.04;
-        letter-spacing: -0.9px;
+        margin: 14px 0 10px;
+        font-size: 40px;
+        line-height: 1.06;
+        letter-spacing: -0.8px;
       }
       p {
         color: var(--muted);
-        font-size: 18px;
-        line-height: 1.6;
+        font-size: 17px;
+        line-height: 1.58;
       }
       .lead {
         max-width: 720px;
         margin: 0;
-        font-size: 17px;
+        font-size: 16px;
       }
       .chips, .links {
         display: flex;
         flex-wrap: wrap;
         gap: 12px;
-        margin-top: 24px;
+        margin-top: 18px;
       }
       .chip, a {
         border-radius: 999px;
@@ -129,7 +129,7 @@ async def root() -> str:
       a {
         background: linear-gradient(135deg, #1f5a6d, #2f6f83);
         color: white;
-        padding: 12px 18px;
+        padding: 11px 17px;
         font-weight: 700;
         box-shadow: 0 12px 28px rgba(31, 90, 109, 0.18);
       }
@@ -142,13 +142,13 @@ async def root() -> str:
       .stats {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 12px;
+        gap: 10px;
       }
       .stat {
         background: var(--card-strong);
         border: 1px solid var(--line);
-        border-radius: 18px;
-        padding: 16px;
+        border-radius: 16px;
+        padding: 14px;
       }
       .stat .label {
         color: var(--muted);
@@ -158,39 +158,40 @@ async def root() -> str:
         letter-spacing: 0.5px;
       }
       .stat .value {
-        margin-top: 8px;
-        font-size: 28px;
+        margin-top: 6px;
+        font-size: 26px;
         font-weight: 800;
         letter-spacing: -0.8px;
       }
       .stat .note {
-        margin-top: 8px;
+        margin-top: 6px;
         color: var(--muted);
-        font-size: 14px;
-        line-height: 1.5;
+        font-size: 13px;
+        line-height: 1.45;
       }
       .section-grid {
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 14px;
-        margin-top: 18px;
+        gap: 12px;
+        margin-top: 14px;
       }
       .panel {
         border: 1px solid var(--line);
         border-radius: 18px;
-        padding: 18px;
+        padding: 16px;
         background: rgba(255, 255, 255, 0.76);
       }
       .panel h2 {
         margin: 0 0 10px;
-        font-size: 20px;
+        font-size: 18px;
         letter-spacing: -0.3px;
       }
       .panel ul {
         margin: 0;
         padding-left: 18px;
         color: var(--muted);
-        line-height: 1.6;
+        line-height: 1.55;
+        font-size: 15px;
       }
       .panel li + li {
         margin-top: 6px;
@@ -198,14 +199,14 @@ async def root() -> str:
       .meta-strip {
         display: grid;
         grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 12px;
-        margin-top: 18px;
+        gap: 10px;
+        margin-top: 14px;
       }
       .meta-item {
         background: rgba(255, 255, 255, 0.72);
         border: 1px solid var(--line);
         border-radius: 16px;
-        padding: 14px 16px;
+        padding: 12px 14px;
       }
       .meta-item strong {
         display: block;
@@ -216,7 +217,7 @@ async def root() -> str:
         letter-spacing: 0.45px;
       }
       .meta-item span {
-        font-size: 16px;
+        font-size: 15px;
         font-weight: 700;
       }
       code {
@@ -243,7 +244,7 @@ async def root() -> str:
           padding: 0 14px 28px;
         }
         .card {
-          padding: 22px;
+          padding: 20px;
           border-radius: 22px;
         }
         .stats {
