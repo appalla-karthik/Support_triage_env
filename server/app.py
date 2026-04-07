@@ -30,333 +30,555 @@ async def root() -> str:
     <style>
       :root {
         color-scheme: light;
-        --bg: #f4f6f7;
-        --bg-mesh-a: rgba(90, 128, 148, 0.10);
-        --bg-mesh-b: rgba(207, 180, 139, 0.12);
+        --bg: #f4f6f8;
         --card: rgba(255, 255, 255, 0.94);
         --card-strong: #ffffff;
-        --ink: #16303d;
-        --muted: #647987;
-        --accent: #234d63;
-        --accent-soft: #e7eff3;
-        --line: rgba(35, 77, 99, 0.10);
-        --success: #2b7a63;
-        --shadow: 0 20px 44px rgba(22, 48, 61, 0.08);
+        --ink: #18323e;
+        --muted: #657987;
+        --accent: #214f64;
+        --accent-soft: #e8f0f4;
+        --line: rgba(33, 79, 100, 0.10);
+        --success: #2f7b62;
+        --shadow: 0 18px 40px rgba(24, 50, 62, 0.08);
       }
       * { box-sizing: border-box; }
       body {
         margin: 0;
         font-family: "Aptos", "Segoe UI Variable", "Segoe UI", Arial, sans-serif;
         background:
-          radial-gradient(circle at 10% 10%, var(--bg-mesh-b) 0, transparent 24%),
-          radial-gradient(circle at 88% 12%, var(--bg-mesh-a) 0, transparent 22%),
-          radial-gradient(circle at 82% 88%, rgba(139, 165, 176, 0.08) 0, transparent 24%),
-          var(--bg);
+          radial-gradient(circle at 10% 10%, rgba(204, 182, 145, 0.12) 0, transparent 25%),
+          radial-gradient(circle at 88% 12%, rgba(111, 151, 168, 0.09) 0, transparent 24%),
+          #f4f6f8;
         color: var(--ink);
       }
       main {
-        max-width: 1080px;
-        margin: 28px auto;
-        padding: 0 18px 24px;
+        max-width: 1120px;
+        margin: 22px auto;
+        padding: 0 16px 24px;
       }
-      .card {
+      .shell {
         background: var(--card);
         border: 1px solid var(--line);
-        border-radius: 28px;
+        border-radius: 24px;
         box-shadow: var(--shadow);
-        backdrop-filter: blur(12px);
-        padding: 24px;
+        overflow: hidden;
       }
-      .hero {
-        display: grid;
-        grid-template-columns: 1.5fr 0.9fr;
-        gap: 16px;
-        align-items: stretch;
+      .topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        padding: 18px 22px;
+        border-bottom: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.78);
       }
       .eyebrow {
         display: inline-flex;
         align-items: center;
-        gap: 10px;
-        padding: 8px 14px;
+        gap: 8px;
+        padding: 8px 12px;
         border-radius: 999px;
         background: var(--accent-soft);
         color: var(--accent);
-        font-size: 13px;
+        font-size: 12px;
         font-weight: 800;
-        letter-spacing: 0.32px;
         text-transform: uppercase;
+        letter-spacing: 0.35px;
       }
       .status-dot {
         width: 9px;
         height: 9px;
         border-radius: 50%;
         background: var(--success);
-        box-shadow: 0 0 0 6px rgba(42, 124, 96, 0.12);
       }
       h1 {
-        margin: 14px 0 10px;
-        font-size: 40px;
-        line-height: 1.06;
-        letter-spacing: -0.8px;
+        margin: 12px 0 6px;
+        font-size: 34px;
+        line-height: 1.05;
+        letter-spacing: -0.7px;
       }
-      p {
-        color: var(--muted);
-        font-size: 17px;
-        line-height: 1.58;
-      }
-      .lead {
-        max-width: 720px;
+      .subtitle {
         margin: 0;
-        font-size: 16px;
+        color: var(--muted);
+        font-size: 15px;
+        line-height: 1.55;
+        max-width: 680px;
       }
-      .chips, .links {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 12px;
-        margin-top: 18px;
-      }
-      .chip, a {
-        border-radius: 999px;
-        text-decoration: none;
-      }
-      .chip {
-        background: #e8f1f4;
-        color: var(--accent);
-        padding: 10px 14px;
-        font-size: 14px;
-        font-weight: 700;
-      }
-      a {
-        background: linear-gradient(135deg, #1f5a6d, #2f6f83);
-        color: white;
-        padding: 11px 17px;
-        font-weight: 700;
-        box-shadow: 0 12px 28px rgba(31, 90, 109, 0.18);
-      }
-      a.secondary {
-        background: rgba(255, 255, 255, 0.58);
-        color: var(--accent);
-        border: 1px solid var(--line);
-        box-shadow: none;
-      }
-      .stats {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 10px;
-      }
-      .stat {
-        background: var(--card-strong);
+      .status-card {
+        min-width: 220px;
+        padding: 12px 14px;
         border: 1px solid var(--line);
         border-radius: 16px;
-        padding: 14px;
+        background: var(--card-strong);
       }
-      .stat .label {
+      .status-card strong {
+        display: block;
         color: var(--muted);
         font-size: 12px;
-        font-weight: 800;
         text-transform: uppercase;
-        letter-spacing: 0.5px;
+        letter-spacing: 0.35px;
       }
-      .stat .value {
+      .status-card span {
+        display: block;
         margin-top: 6px;
-        font-size: 26px;
-        font-weight: 800;
-        letter-spacing: -0.8px;
+        font-size: 15px;
+        font-weight: 700;
       }
-      .stat .note {
-        margin-top: 6px;
-        color: var(--muted);
-        font-size: 13px;
-        line-height: 1.45;
-      }
-      .section-grid {
+      .layout {
         display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 12px;
-        margin-top: 14px;
+        grid-template-columns: 320px minmax(0, 1fr);
+        gap: 16px;
+        padding: 16px;
       }
       .panel {
         border: 1px solid var(--line);
         border-radius: 18px;
         padding: 16px;
-        background: rgba(255, 255, 255, 0.76);
+        background: rgba(255, 255, 255, 0.78);
       }
       .panel h2 {
         margin: 0 0 10px;
         font-size: 18px;
-        letter-spacing: -0.3px;
+        letter-spacing: -0.2px;
       }
-      .panel ul {
-        margin: 0;
-        padding-left: 18px;
+      .panel p,
+      .panel li,
+      .helper,
+      label {
         color: var(--muted);
+        font-size: 14px;
         line-height: 1.55;
-        font-size: 15px;
       }
-      .panel li + li {
-        margin-top: 6px;
-      }
-      .meta-strip {
-        display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 10px;
+      .stack > * + * {
         margin-top: 14px;
       }
-      .meta-item {
-        background: rgba(255, 255, 255, 0.72);
+      .helper {
+        margin-bottom: 8px;
+        font-weight: 700;
+        color: var(--ink);
+      }
+      .quick-code {
+        background: #f7fafb;
         border: 1px solid var(--line);
-        border-radius: 16px;
-        padding: 12px 14px;
+        border-radius: 14px;
+        padding: 12px;
+        white-space: pre-wrap;
+        font-family: Consolas, "SFMono-Regular", monospace;
+        font-size: 12px;
+        line-height: 1.55;
+        color: #264656;
       }
-      .meta-item strong {
-        display: block;
-        font-size: 14px;
-        color: var(--muted);
-        margin-bottom: 6px;
-        text-transform: uppercase;
-        letter-spacing: 0.45px;
+      .chip-row,
+      .link-row,
+      .button-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
       }
-      .meta-item span {
-        font-size: 15px;
+      .chip {
+        background: var(--accent-soft);
+        color: var(--accent);
+        border-radius: 999px;
+        padding: 8px 12px;
+        font-size: 13px;
         font-weight: 700;
       }
+      .playground {
+        display: grid;
+        gap: 14px;
+      }
+      .toolbar {
+        display: grid;
+        grid-template-columns: 1fr 120px 140px;
+        gap: 10px;
+      }
+      select,
+      input,
+      textarea,
+      button {
+        font: inherit;
+      }
+      select,
+      input,
+      textarea {
+        width: 100%;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 12px 13px;
+        background: var(--card-strong);
+        color: var(--ink);
+      }
+      textarea {
+        min-height: 176px;
+        resize: vertical;
+        font-family: Consolas, "SFMono-Regular", monospace;
+        font-size: 13px;
+        line-height: 1.5;
+      }
+      button,
+      .link-btn {
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 11px 15px;
+        background: var(--card-strong);
+        color: var(--accent);
+        font-weight: 700;
+        cursor: pointer;
+        text-decoration: none;
+      }
+      button.primary {
+        border-color: transparent;
+        background: linear-gradient(135deg, #1f5366, #2b6a7d);
+        color: white;
+        box-shadow: 0 10px 22px rgba(31, 83, 102, 0.14);
+      }
+      .status-line {
+        display: grid;
+        grid-template-columns: 1fr 0.8fr 0.7fr;
+        gap: 10px;
+      }
+      .pill {
+        min-height: 48px;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: var(--card-strong);
+        padding: 12px 14px;
+      }
+      .pill strong {
+        color: var(--muted);
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.35px;
+        margin-right: 6px;
+      }
+      .json-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+      }
+      .json-box {
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        background: #f7fafb;
+        overflow: hidden;
+      }
+      .json-box header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.82);
+      }
+      .json-box header strong {
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.35px;
+      }
+      pre {
+        margin: 0;
+        padding: 14px;
+        min-height: 240px;
+        max-height: 440px;
+        overflow: auto;
+        font-family: Consolas, "SFMono-Regular", monospace;
+        font-size: 12px;
+        line-height: 1.55;
+        color: #294757;
+      }
       code {
-        background: #eef4f6;
+        background: #edf4f7;
         border-radius: 8px;
         padding: 2px 6px;
         color: var(--accent);
       }
       @media (max-width: 980px) {
-        .hero,
-        .section-grid,
-        .meta-strip {
+        .layout,
+        .json-grid,
+        .status-line {
           grid-template-columns: 1fr;
-        }
-        .stats {
-          grid-template-columns: 1fr 1fr;
-        }
-        h1 {
-          font-size: 42px;
         }
       }
-      @media (max-width: 640px) {
+      @media (max-width: 720px) {
         main {
-          padding: 0 14px 28px;
+          padding: 0 12px 20px;
         }
-        .card {
-          padding: 20px;
-          border-radius: 22px;
+        .topbar,
+        .layout {
+          padding: 14px;
         }
-        .stats {
+        .toolbar {
           grid-template-columns: 1fr;
         }
+        .status-card {
+          min-width: 0;
+        }
         h1 {
-          font-size: 34px;
+          font-size: 30px;
         }
       }
     </style>
   </head>
   <body>
     <main>
-      <section class="card">
-        <div class="hero">
+      <section class="shell">
+        <div class="topbar">
           <div>
             <div class="eyebrow">
               <span class="status-dot"></span>
               OpenEnv Environment Live
             </div>
             <h1>Support Triage Environment</h1>
-            <p class="lead">
-              A real-world customer support simulator for agents that classify,
-              prioritize, reply, escalate, and resolve tickets under deterministic
-              graders with shaped rewards.
+            <p class="subtitle">
+              A compact playground for resetting episodes, sending actions, and inspecting
+              JSON responses from the deployed customer support triage simulator.
             </p>
-            <div class="chips">
-              <span class="chip">Customer Support Operations</span>
-              <span class="chip">Easy to Hard Tasks</span>
-              <span class="chip">Deterministic Graders</span>
-              <span class="chip">Reward Shaping</span>
-            </div>
-            <div class="links">
-              <a href="/metadata">Metadata</a>
-              <a href="/schema">Schema</a>
-              <a href="/docs" class="secondary">OpenAPI Docs</a>
-              <a href="/openapi.json" class="secondary">OpenAPI JSON</a>
-            </div>
           </div>
-          <div class="stats">
-            <article class="stat">
-              <div class="label">Tasks</div>
-              <div class="value">3</div>
-              <div class="note">Easy, medium, and hard workflows with deterministic scoring.</div>
-            </article>
-            <article class="stat">
-              <div class="label">HTTP Surface</div>
-              <div class="value">OpenEnv</div>
-              <div class="note">Typed endpoints for reset, step, state, metadata, and schema.</div>
-            </article>
-            <article class="stat">
-              <div class="label">Primary Objective</div>
-              <div class="value">Safe Triage</div>
-              <div class="note">Rewards compliant replies, correct routing, and thoughtful escalation.</div>
-            </article>
-            <article class="stat">
-              <div class="label">Deployment</div>
-              <div class="value">Docker</div>
-              <div class="note">Containerized for Hugging Face Spaces and OpenEnv validation.</div>
-            </article>
+          <div class="status-card">
+            <strong>Current Service</strong>
+            <span id="service-meta">Loading metadata...</span>
           </div>
         </div>
 
-        <div class="meta-strip">
-          <div class="meta-item">
-            <strong>Status</strong>
-            <span>Running</span>
-          </div>
-          <div class="meta-item">
-            <strong>Environment</strong>
-            <span>support_triage_env</span>
-          </div>
-          <div class="meta-item">
-            <strong>API Pattern</strong>
-            <span>reset / step / state</span>
-          </div>
-          <div class="meta-item">
-            <strong>Intended Use</strong>
-            <span>Agent Evaluation & Training</span>
-          </div>
-        </div>
+        <div class="layout">
+          <aside class="panel stack">
+            <div>
+              <h2>Quick Start</h2>
+              <p>Connect from Python or use the browser-side playground to inspect reset, step, state, metadata, and schema responses.</p>
+            </div>
 
-        <div class="section-grid">
-          <article class="panel">
-            <h2>Core Endpoints</h2>
-            <ul>
-              <li><code>/reset</code> starts a new episode</li>
-              <li><code>/step</code> applies the next agent action</li>
-              <li><code>/state</code> exposes current environment state</li>
-              <li><code>/metadata</code> and <code>/schema</code> describe the environment</li>
-            </ul>
-          </article>
-          <article class="panel">
-            <h2>Included Tasks</h2>
-            <ul>
-              <li><strong>billing_refund_easy</strong>: duplicate-charge refund handling</li>
-              <li><strong>export_outage_medium</strong>: engineering escalation for reporting outage</li>
-              <li><strong>security_and_refund_hard</strong>: urgent security triage before billing work</li>
-            </ul>
-          </article>
-          <article class="panel">
-            <h2>Evaluation Focus</h2>
-            <ul>
-              <li>Correct category, priority, and routing</li>
-              <li>Customer-safe, policy-compliant replies</li>
-              <li>Partial-credit rewards across the full trajectory</li>
-              <li>Penalties for unsafe or repeated actions</li>
-            </ul>
-          </article>
+            <div>
+              <div class="helper">Python client</div>
+              <div class="quick-code">from support_triage_env import SupportTriageEnv
+
+env = SupportTriageEnv(base_url="https://your-space-url")
+await env.connect()</div>
+            </div>
+
+            <div>
+              <div class="helper">Environment profile</div>
+              <div class="chip-row">
+                <span class="chip">3 Tasks</span>
+                <span class="chip">Deterministic Graders</span>
+                <span class="chip">Reward Shaping</span>
+              </div>
+            </div>
+
+            <div>
+              <div class="helper">Task presets</div>
+              <div class="chip-row">
+                <span class="chip">billing_refund_easy</span>
+                <span class="chip">export_outage_medium</span>
+                <span class="chip">security_and_refund_hard</span>
+              </div>
+            </div>
+
+            <div>
+              <div class="helper">Direct links</div>
+              <div class="link-row">
+                <a class="link-btn" href="/metadata" target="_blank" rel="noreferrer">Metadata</a>
+                <a class="link-btn" href="/schema" target="_blank" rel="noreferrer">Schema</a>
+                <a class="link-btn" href="/docs" target="_blank" rel="noreferrer">Docs</a>
+                <a class="link-btn" href="/openapi.json" target="_blank" rel="noreferrer">OpenAPI JSON</a>
+              </div>
+            </div>
+          </aside>
+
+          <section class="playground">
+            <div class="panel">
+              <h2>Playground</h2>
+              <div class="toolbar">
+                <div>
+                  <label for="task">Task</label>
+                  <select id="task">
+                    <option value="billing_refund_easy">billing_refund_easy</option>
+                    <option value="export_outage_medium">export_outage_medium</option>
+                    <option value="security_and_refund_hard">security_and_refund_hard</option>
+                  </select>
+                </div>
+                <div>
+                  <label for="seed">Seed</label>
+                  <input id="seed" type="number" placeholder="Optional" />
+                </div>
+                <div>
+                  <label>&nbsp;</label>
+                  <button id="fill-sample" type="button">Sample Action</button>
+                </div>
+              </div>
+
+              <div style="margin-top: 12px;">
+                <label for="action-json">Action JSON</label>
+                <textarea id="action-json">{
+  "action_type": "classify_ticket",
+  "ticket_id": "TCK-0000",
+  "category": "billing_refund",
+  "priority": "medium",
+  "team": "billing_ops"
+}</textarea>
+              </div>
+
+              <div class="button-row" style="margin-top: 12px;">
+                <button class="primary" id="reset-btn" type="button">Reset</button>
+                <button class="primary" id="step-btn" type="button">Step</button>
+                <button id="state-btn" type="button">Get State</button>
+                <button id="schema-btn" type="button">Refresh Schema</button>
+              </div>
+
+              <div class="status-line" style="margin-top: 12px;">
+                <div class="pill"><strong>Status</strong><span id="status-text">Ready</span></div>
+                <div class="pill"><strong>Reward</strong><span id="reward-text">-</span></div>
+                <div class="pill"><strong>Done</strong><span id="done-text">false</span></div>
+              </div>
+            </div>
+
+            <div class="json-grid">
+              <section class="json-box">
+                <header><strong>Latest Response</strong><span id="response-kind">idle</span></header>
+                <pre id="response-json">{}</pre>
+              </section>
+              <section class="json-box">
+                <header><strong>Schema Snapshot</strong><span id="schema-kind">loading</span></header>
+                <pre id="schema-json">{}</pre>
+              </section>
+            </div>
+          </section>
         </div>
       </section>
     </main>
+    <script>
+      const responseJson = document.getElementById("response-json");
+      const schemaJson = document.getElementById("schema-json");
+      const statusText = document.getElementById("status-text");
+      const rewardText = document.getElementById("reward-text");
+      const doneText = document.getElementById("done-text");
+      const responseKind = document.getElementById("response-kind");
+      const schemaKind = document.getElementById("schema-kind");
+      const taskInput = document.getElementById("task");
+      const seedInput = document.getElementById("seed");
+      const actionInput = document.getElementById("action-json");
+      const serviceMeta = document.getElementById("service-meta");
+
+      function pretty(data) {
+        return JSON.stringify(data, null, 2);
+      }
+
+      function setStatus(text) {
+        statusText.textContent = text;
+      }
+
+      function setStepInfo(payload) {
+        rewardText.textContent = payload.reward == null ? "-" : String(payload.reward);
+        doneText.textContent = String(Boolean(payload.done));
+      }
+
+      async function loadMetadata() {
+        const response = await fetch("/metadata");
+        const payload = await response.json();
+        serviceMeta.textContent = `${payload.name} v${payload.version || "?"}`;
+      }
+
+      async function loadSchema() {
+        schemaKind.textContent = "schema";
+        const response = await fetch("/schema");
+        const payload = await response.json();
+        schemaJson.textContent = pretty(payload);
+      }
+
+      async function doReset() {
+        setStatus("Resetting episode...");
+        const body = { task_id: taskInput.value };
+        if (seedInput.value !== "") {
+          body.seed = Number(seedInput.value);
+        }
+        const response = await fetch("/reset", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        const payload = await response.json();
+        responseKind.textContent = "reset";
+        responseJson.textContent = pretty(payload);
+        setStepInfo(payload);
+        setStatus(response.ok ? "Episode reset successfully" : "Reset failed");
+      }
+
+      async function doStep() {
+        setStatus("Sending action...");
+        let action;
+        try {
+          action = JSON.parse(actionInput.value);
+        } catch (error) {
+          setStatus("Action JSON is invalid");
+          responseKind.textContent = "client-error";
+          responseJson.textContent = pretty({ error: "Invalid JSON", detail: String(error) });
+          return;
+        }
+        const response = await fetch("/step", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action }),
+        });
+        const payload = await response.json();
+        responseKind.textContent = "step";
+        responseJson.textContent = pretty(payload);
+        setStepInfo(payload);
+        setStatus(response.ok ? "Action executed" : "Step request failed");
+      }
+
+      async function getState() {
+        setStatus("Fetching current state...");
+        const response = await fetch("/state");
+        const payload = await response.json();
+        responseKind.textContent = "state";
+        responseJson.textContent = pretty(payload);
+        setStatus(response.ok ? "State loaded" : "State request failed");
+      }
+
+      function fillSample() {
+        const samples = {
+          billing_refund_easy: {
+            action_type: "classify_ticket",
+            ticket_id: "TCK-0000",
+            category: "billing_refund",
+            priority: "medium",
+            team: "billing_ops"
+          },
+          export_outage_medium: {
+            action_type: "classify_ticket",
+            ticket_id: "TCK-0000",
+            category: "product_bug",
+            priority: "high",
+            team: "engineering"
+          },
+          security_and_refund_hard: {
+            action_type: "classify_ticket",
+            ticket_id: "TCK-0000",
+            category: "security_account_takeover",
+            priority: "urgent",
+            team: "trust_safety"
+          }
+        };
+        actionInput.value = pretty(samples[taskInput.value]);
+      }
+
+      document.getElementById("reset-btn").addEventListener("click", doReset);
+      document.getElementById("step-btn").addEventListener("click", doStep);
+      document.getElementById("state-btn").addEventListener("click", getState);
+      document.getElementById("schema-btn").addEventListener("click", loadSchema);
+      document.getElementById("fill-sample").addEventListener("click", fillSample);
+      taskInput.addEventListener("change", fillSample);
+
+      fillSample();
+      loadMetadata().catch((error) => {
+        serviceMeta.textContent = "Metadata unavailable";
+        responseKind.textContent = "error";
+        responseJson.textContent = pretty({ error: "Metadata fetch failed", detail: String(error) });
+      });
+      loadSchema().catch((error) => {
+        schemaKind.textContent = "error";
+        schemaJson.textContent = pretty({ error: "Schema fetch failed", detail: String(error) });
+      });
+    </script>
   </body>
 </html>
 """
@@ -375,4 +597,3 @@ def main(host: str = "0.0.0.0", port: int = 8000):
 
 if __name__ == "__main__":
     main()
-
