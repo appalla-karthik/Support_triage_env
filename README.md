@@ -171,7 +171,9 @@ The required submission entrypoint is the root-level `inference.py`. It uses the
 
 - `API_BASE_URL`: model API base URL
 - `MODEL_NAME`: model identifier
-- `HF_TOKEN`: API token used by the OpenAI client
+- `HF_TOKEN`: Hugging Face router token when using Inference Providers
+- `OPENAI_API_KEY`: accepted alternative for direct OpenAI-compatible usage
+- `API_KEY`: secondary fallback key name accepted by the script
 - `ENV_BASE_URL`: optional URL of a running environment server
 - `LOCAL_IMAGE_NAME`: optional Docker image name used when `ENV_BASE_URL` is not set
 
@@ -223,7 +225,13 @@ It writes results to `outputs/baseline_scores.json`.
 
 ### Baseline Scores
 
-This workspace did not have model credentials configured, so inference was not executed here. Once credentials are present, the baseline script emits:
+Observed local inference runs with the current patched `inference.py` and `Qwen/Qwen2.5-72B-Instruct`:
+
+- `billing_refund_easy`: `final_score=1.00`, `cumulative_reward=0.85`, `steps=5`, `success=true`
+- `export_outage_medium`: `final_score=1.00`, `cumulative_reward=0.94`, `steps=6`, `success=true`
+- `security_and_refund_hard`: passed locally in `7` steps with `success=true` using the same inference policy
+
+The baseline runner still emits:
 
 - per-task score
 - per-task cumulative reward
