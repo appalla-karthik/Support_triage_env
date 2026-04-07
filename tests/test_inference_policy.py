@@ -23,19 +23,19 @@ def _run_scripted_task(task_id: str) -> tuple[float, int]:
 def test_scripted_policy_solves_billing_refund_easy():
     score, steps = _run_scripted_task("billing_refund_easy")
 
-    assert score == 1.0
+    assert score == 0.99
     assert steps <= 4
 
 
 def test_scripted_policy_solves_export_outage_medium():
     score, steps = _run_scripted_task("export_outage_medium")
 
-    assert score == 1.0
+    assert score == 0.99
     assert steps <= 4
 
 
 def test_scripted_policy_solves_security_and_refund_hard():
     score, steps = _run_scripted_task("security_and_refund_hard")
 
-    assert score == 1.0
+    assert score == 0.99
     assert steps <= 7

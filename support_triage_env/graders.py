@@ -61,6 +61,11 @@ class BaseTaskGrader(ABC):
                 return ticket
         raise KeyError(ticket_id)
 
+    def _strict_score(self, raw_score: float) -> float:
+        if raw_score >= 1.0:
+            return 0.99
+        return raw_score
+
 class BillingRefundEasyGrader(BaseTaskGrader):
     def grade(self, state: SupportTriageState) -> GradingSnapshot:
         expectation = next(iter(self.scenario.expectations.values()))
@@ -115,6 +120,7 @@ class BillingRefundEasyGrader(BaseTaskGrader):
             violations.append("Requested sensitive data over email")
 
         score = max(0.0, min(1.0, sum(components.values()) - sum(penalties.values())))
+        score = self._strict_score(score)
         return GradingSnapshot(
             score=round(score, 4),
             components=components,
@@ -193,6 +199,7 @@ class ExportOutageMediumGrader(BaseTaskGrader):
             violations.append("Promised an unsupported delivery ETA")
 
         score = max(0.0, min(1.0, sum(components.values()) - sum(penalties.values())))
+        score = self._strict_score(score)
         return GradingSnapshot(
             score=round(score, 4),
             components=components,
@@ -346,6 +353,7 @@ class SecurityAndRefundHardGrader(BaseTaskGrader):
             violations.append("Requested sensitive billing data over email")
 
         score = max(0.0, min(1.0, sum(components.values()) - sum(penalties.values())))
+        score = self._strict_score(score)
         return GradingSnapshot(
             score=round(score, 4),
             components=components,
