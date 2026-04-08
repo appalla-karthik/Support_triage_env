@@ -98,10 +98,17 @@ def log_step(
     )
 
 
-def log_end(success: bool, steps: int, score: float, rewards: list[float]) -> None:
+def log_end(
+    task: str,
+    success: bool,
+    steps: int,
+    score: float,
+    rewards: list[float],
+) -> None:
     reward_values = ",".join(f"{reward:.2f}" for reward in rewards)
     print(
-        f"[END] success={str(success).lower()} steps={steps} score={score:.2f} rewards={reward_values}",
+        f"[END] task={task} success={str(success).lower()} steps={steps} "
+        f"score={score:.2f} rewards={reward_values}",
         flush=True,
     )
 
@@ -856,6 +863,7 @@ async def run_task(
         fatal_error = sanitize_single_line(str(exc))
 
     log_end(
+        task=task_name,
         success=success,
         steps=steps_taken,
         score=final_score,
@@ -881,6 +889,13 @@ async def main() -> None:
     proxy_request_attempted = False
     proxy_request_succeeded = False
     task_names = configured_task_names()
+    task_label = ",".join(task_names) if task_names else "no_task"
+    overall_rewards: list[float] = []
+
+    # Emit a top-level structured block before any fallible setup so the
+    # validator always sees stdout markers even if environment bootstrap fails.
+    log_start(task=task_label, env=BENCHMARK, model=MODEL_NAME)
+    log_step(step=0, action="bootstrap", reward=0.0, done=False, error=None)
 
     try:
         env = await create_env()
@@ -891,9 +906,18 @@ async def main() -> None:
             proxy_request_succeeded = True
 
         for task_name in task_names:
-            task_results.append(await run_task(env, client, task_name))
+            task_result = await run_task(env, client, task_name)
+            task_results.append(task_result)
+            overall_rewards.extend(task_result["rewards"])
     except Exception as exc:
         fatal_error = sanitize_single_line(str(exc))
+        log_step(
+            step=0,
+            action="fatal_error",
+            reward=0.0,
+            done=True,
+            error=fatal_error,
+        )
     finally:
         if env is not None:
             try:
@@ -936,6 +960,13 @@ async def main() -> None:
                 "successful_tasks": successful_tasks,
                 "tasks": task_results,
             }
+        )
+        log_end(
+            task=task_label,
+            success=successful_tasks == len(task_results) and bool(task_results),
+            steps=total_steps,
+            score=mean_score,
+            rewards=overall_rewards,
         )
 
 
