@@ -62,6 +62,8 @@ class BaseTaskGrader(ABC):
         raise KeyError(ticket_id)
 
     def _strict_score(self, raw_score: float) -> float:
+        if raw_score <= 0.0:
+            return 0.01
         if raw_score >= 1.0:
             return 0.99
         return raw_score
