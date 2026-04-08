@@ -116,3 +116,14 @@ def test_seeded_reset_is_dynamic_but_reproducible():
         != third.queue[0].latest_customer_message
     )
 
+
+def test_reset_scores_are_strictly_in_range_for_all_tasks():
+    from support_triage_env.tasks import task_ids
+
+    for task_id in task_ids():
+        env = SupportTriageSimulator()
+        observation = env.reset(task_id=task_id, seed=7)
+
+        assert 0.0 < observation.progress.score < 1.0
+        assert 0.0 < env.state().progress.score < 1.0
+

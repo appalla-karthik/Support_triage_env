@@ -62,7 +62,7 @@ class SupportTriageSimulator:
         scenario = build_task_scenario(task_id, self._rng)
         self._scenario = scenario
         self._grader = build_graders({task_id: scenario})[task_id]
-        self._state = SupportTriageState(
+        initial_state = SupportTriageState(
             episode_id=episode_id or str(uuid.uuid4()),
             step_count=0,
             task_id=scenario.card.task_id,
@@ -77,9 +77,14 @@ class SupportTriageSimulator:
             done=False,
             progress=GradingSnapshot(score=0.0),
         )
+        initial_grade = self._grader.grade(initial_state)
+        initial_payload = initial_state.model_dump()
+        initial_payload["final_score"] = initial_grade.score
+        initial_payload["progress"] = initial_grade
+        self._state = SupportTriageState(**initial_payload)
         self._last_reward = SupportTriageReward(
             value=0.0,
-            task_score=0.0,
+            task_score=initial_grade.score,
             score_delta=0.0,
             components={},
             penalties={},
