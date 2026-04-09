@@ -40,7 +40,7 @@ def _reply_score(
     ticket: TicketRecord, labels_and_phrases: list[tuple[str, list[str]]]
 ) -> tuple[float, list[str], list[str]]:
     if not labels_and_phrases:
-        return 1.0, [], []
+        return _strict_score(1.0), [], []
 
     combined = _all_outbound_text(ticket)
     satisfied: list[str] = []
