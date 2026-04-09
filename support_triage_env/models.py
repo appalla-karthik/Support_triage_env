@@ -14,7 +14,7 @@ def strict_unit_interval(value: float) -> float:
     return round(min(1.0 - STRICT_SCORE_EPSILON, max(STRICT_SCORE_EPSILON, float(value))), 4)
 
 
-DEFAULT_STRICT_SCORE = strict_unit_interval(0.0)
+DEFAULT_STRICT_SCORE = 0.01
 
 
 class ActionType(str, Enum):
@@ -125,7 +125,7 @@ class TaskCard(BaseModel):
 
 
 class GradingSnapshot(BaseModel):
-    score: float = Field(..., ge=0.0, le=1.0)
+    score: float = Field(default=0.01, ge=0.01, le=0.99)
     components: dict[str, float] = Field(default_factory=dict)
     penalties: dict[str, float] = Field(default_factory=dict)
     satisfied_requirements: list[str] = Field(default_factory=list)
@@ -140,7 +140,7 @@ class GradingSnapshot(BaseModel):
 
 class SupportTriageReward(BaseModel):
     value: float = Field(..., description="Scalar reward for the current step.")
-    task_score: float = Field(..., ge=0.0, le=1.0)
+    task_score: float = Field(default=0.01, ge=0.01, le=0.99)
     score_delta: float = Field(..., description="Change in graded task score.")
     components: dict[str, float] = Field(default_factory=dict)
     penalties: dict[str, float] = Field(default_factory=dict)
