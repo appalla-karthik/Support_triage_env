@@ -4,18 +4,18 @@ import os
 import textwrap
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 from openai import APIStatusError, OpenAI
 
-from support_triage_env import (
-    SupportTriageAction,
-    SupportTriageEnv,
-    SupportTriageObservation,
-    SupportTriageSimulator,
-    SupportTriageState,
-)
+from support_triage_env.models import SupportTriageAction, SupportTriageObservation, SupportTriageState
+from support_triage_env.simulator import SupportTriageSimulator
 from support_triage_env.models import DEFAULT_STRICT_SCORE, strict_unit_interval
+
+try:
+    from support_triage_env.client import SupportTriageEnv
+except ModuleNotFoundError:
+    SupportTriageEnv = Any
 
 MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
 LOCAL_IMAGE_NAME = os.getenv("LOCAL_IMAGE_NAME")
@@ -108,7 +108,7 @@ def log_end(
 ) -> None:
     reward_values = ",".join(f"{reward:.2f}" for reward in rewards)
     print(
-        f"[END] success={str(success).lower()} steps={steps} score={score:.4f} rewards={reward_values}",
+        f"[END] task={task} success={str(success).lower()} steps={steps} score={score:.4f} rewards={reward_values}",
         flush=True,
     )
 
@@ -252,7 +252,7 @@ def get_model_action(client: OpenAI, observation: dict, state: dict) -> SupportT
 
 def create_model_client() -> OpenAI | None:
     api_base_url = os.getenv("API_BASE_URL")
-    api_key = os.getenv("API_KEY")
+    api_key = os.getenv("API_KEY") or os.getenv("HF_TOKEN")
     if not api_base_url or not api_key:
         return None
     return OpenAI(base_url=api_base_url, api_key=api_key)
@@ -750,11 +750,19 @@ def postprocess_action(
 
 async def create_env() -> SupportTriageEnv:
     if ENV_BASE_URL:
+        if SupportTriageEnv is Any:
+            raise RuntimeError(
+                "openenv-core is required when ENV_BASE_URL is set. Install project dependencies first."
+            )
         env = SupportTriageEnv(base_url=ENV_BASE_URL)
         await env.connect()
         return env
 
     if LOCAL_IMAGE_NAME:
+        if SupportTriageEnv is Any:
+            raise RuntimeError(
+                "openenv-core is required when LOCAL_IMAGE_NAME is set. Install project dependencies first."
+            )
         return await SupportTriageEnv.from_docker_image(LOCAL_IMAGE_NAME)
 
     return LocalEnvAdapter()

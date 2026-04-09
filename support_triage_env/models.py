@@ -3,8 +3,21 @@ from __future__ import annotations
 from enum import Enum
 from typing import Literal
 
-from openenv.core.env_server.types import Action, Observation, State
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+try:
+    from openenv.core.env_server.types import Action, Observation, State
+except ModuleNotFoundError:
+    # Local test fallback when openenv-core is not installed. When the real
+    # package is available, these shims are not used.
+    class Action(BaseModel):
+        metadata: dict = Field(default_factory=dict)
+
+    class Observation(BaseModel):
+        metadata: dict = Field(default_factory=dict)
+
+    class State(BaseModel):
+        pass
 
 
 STRICT_SCORE_EPSILON = 0.01
@@ -125,7 +138,9 @@ class TaskCard(BaseModel):
 
 
 class GradingSnapshot(BaseModel):
-    score: float = Field(default=0.01, ge=0.01, le=0.99)
+    model_config = ConfigDict(validate_assignment=True)
+
+    score: float = Field(default=0.01, gt=0.0, lt=1.0)
     components: dict[str, float] = Field(default_factory=dict)
     penalties: dict[str, float] = Field(default_factory=dict)
     satisfied_requirements: list[str] = Field(default_factory=list)
@@ -139,8 +154,10 @@ class GradingSnapshot(BaseModel):
 
 
 class SupportTriageReward(BaseModel):
+    model_config = ConfigDict(validate_assignment=True)
+
     value: float = Field(..., description="Scalar reward for the current step.")
-    task_score: float = Field(default=0.01, ge=0.01, le=0.99)
+    task_score: float = Field(default=0.01, gt=0.0, lt=1.0)
     score_delta: float = Field(..., description="Change in graded task score.")
     components: dict[str, float] = Field(default_factory=dict)
     penalties: dict[str, float] = Field(default_factory=dict)
@@ -190,6 +207,8 @@ class SupportTriageObservation(Observation):
 
 
 class SupportTriageState(State):
+    model_config = ConfigDict(validate_assignment=True)
+
     episode_id: str | None = None
     step_count: int = 0
     task_id: str | None = None
