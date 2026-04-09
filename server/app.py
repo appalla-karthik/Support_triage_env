@@ -770,6 +770,23 @@ GET  /schema</div>
         return null;
       }
 
+      function buildStateFromObservation(observationPayload) {
+        if (!observationPayload || !Array.isArray(observationPayload.queue)) {
+          return null;
+        }
+        return {
+          tickets: observationPayload.queue.map((ticket) => ({
+            ...ticket,
+            messages: [],
+            outbound_messages: [],
+            internal_notes: [],
+            requested_information: [],
+          })),
+          progress: observationPayload.progress || null,
+          step_count: 0,
+        };
+      }
+
       function setStatus(text) {
         statusText.textContent = text;
       }
@@ -959,7 +976,10 @@ GET  /schema</div>
         });
         const payload = await response.json();
         latestObservation = extractObservationPayload(payload);
-        latestState = extractStatePayload(payload) || latestState;
+        latestState =
+          extractStatePayload(payload) ||
+          buildStateFromObservation(latestObservation) ||
+          latestState;
         latestResult = payload;
         responseKind.textContent = "reset";
         responseJson.textContent = pretty(payload);
@@ -992,7 +1012,10 @@ GET  /schema</div>
         });
         const payload = await response.json();
         latestObservation = extractObservationPayload(payload);
-        latestState = extractStatePayload(payload) || latestState;
+        latestState =
+          extractStatePayload(payload) ||
+          buildStateFromObservation(latestObservation) ||
+          latestState;
         latestResult = payload;
         responseKind.textContent = "step";
         responseJson.textContent = pretty(payload);
