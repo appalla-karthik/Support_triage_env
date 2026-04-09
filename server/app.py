@@ -30,54 +30,64 @@ async def root() -> str:
     <style>
       :root {
         color-scheme: light;
-        --bg: #f3f6f8;
-        --card: rgba(255, 255, 255, 0.97);
+        --bg: #f5f1e8;
+        --bg-soft: #fcfaf5;
+        --card: rgba(255, 252, 247, 0.96);
         --card-strong: #ffffff;
-        --ink: #142f3b;
-        --muted: #617887;
-        --accent: #1f4c61;
-        --accent-soft: #e7f0f4;
-        --line: rgba(31, 76, 97, 0.11);
-        --success: #2d7a61;
-        --warning: #a86c2d;
-        --shadow: 0 18px 46px rgba(20, 47, 59, 0.08);
+        --ink: #1b2e2a;
+        --muted: #62706a;
+        --accent: #295f56;
+        --accent-deep: #173f39;
+        --accent-soft: #e4efe9;
+        --line: rgba(41, 95, 86, 0.14);
+        --success: #2f7a5d;
+        --warning: #a46a2a;
+        --warm: #f0e1c8;
+        --shadow: 0 24px 60px rgba(37, 55, 49, 0.08);
       }
       * { box-sizing: border-box; }
       body {
         margin: 0;
         font-family: "Aptos", "Segoe UI Variable", "Segoe UI", Arial, sans-serif;
         background:
-          linear-gradient(180deg, #f4f7f9 0%, #eef3f6 100%);
+          radial-gradient(circle at top left, rgba(240, 225, 200, 0.65), transparent 28%),
+          radial-gradient(circle at top right, rgba(228, 239, 233, 0.9), transparent 24%),
+          linear-gradient(180deg, #f8f4ec 0%, #f4efe6 100%);
         color: var(--ink);
       }
       main {
         width: 100%;
         max-width: none;
         margin: 0;
-        padding: 12px 12px 20px;
+        padding: 14px 14px 24px;
       }
       .shell {
         background: var(--card);
         border: 1px solid var(--line);
-        border-radius: 18px;
-        box-shadow: 0 16px 40px rgba(20, 47, 59, 0.06);
+        border-radius: 24px;
+        box-shadow: var(--shadow);
         overflow: hidden;
+        backdrop-filter: blur(14px);
       }
       .topbar {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 14px;
-        padding: 16px 20px;
+        display: grid;
+        grid-template-columns: minmax(0, 1.45fr) minmax(280px, 0.9fr);
+        gap: 18px;
+        padding: 24px;
         border-bottom: 1px solid var(--line);
         background:
-          linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 251, 252, 0.92));
+          linear-gradient(180deg, rgba(255, 252, 247, 0.98), rgba(248, 244, 236, 0.94));
+      }
+      .hero-copy {
+        display: grid;
+        gap: 14px;
       }
       .eyebrow {
         display: inline-flex;
         align-items: center;
         gap: 8px;
-        padding: 7px 11px;
+        width: fit-content;
+        padding: 8px 12px;
         border-radius: 999px;
         background: var(--accent-soft);
         color: var(--accent);
@@ -93,60 +103,109 @@ async def root() -> str:
         background: var(--success);
       }
       h1 {
-        margin: 10px 0 4px;
-        font-size: 32px;
-        line-height: 1.08;
-        letter-spacing: -0.6px;
+        margin: 0;
+        font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+        font-size: 46px;
+        line-height: 0.98;
+        letter-spacing: -1px;
       }
       .subtitle {
         margin: 0;
         color: var(--muted);
-        font-size: 14px;
+        font-size: 16px;
+        line-height: 1.7;
+        max-width: 780px;
+      }
+      .hero-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+      }
+      .mini-card {
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 14px;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(249, 246, 240, 0.92));
+      }
+      .mini-card strong {
+        display: block;
+        color: var(--muted);
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.35px;
+      }
+      .mini-card span {
+        display: block;
+        margin-top: 8px;
+        font-size: 20px;
+        font-weight: 800;
+        color: var(--accent-deep);
+      }
+      .mini-card p {
+        margin: 8px 0 0;
+        color: var(--muted);
+        font-size: 13px;
         line-height: 1.55;
-        max-width: 760px;
       }
       .status-card {
         min-width: 240px;
-        padding: 12px 14px;
+        padding: 18px;
         border: 1px solid var(--line);
-        border-radius: 14px;
-        background: linear-gradient(180deg, #ffffff, #fbfdfe);
+        border-radius: 20px;
+        background:
+          linear-gradient(160deg, rgba(41, 95, 86, 0.96), rgba(23, 63, 57, 0.96));
+        color: #f7f7f2;
+        display: grid;
+        gap: 14px;
       }
       .status-card strong {
         display: block;
-        color: var(--muted);
+        color: rgba(247, 247, 242, 0.72);
         font-size: 12px;
         text-transform: uppercase;
         letter-spacing: 0.35px;
       }
       .status-card span {
         display: block;
-        margin-top: 6px;
+        margin-top: 0;
         font-size: 15px;
         font-weight: 700;
       }
+      .status-card p {
+        margin: 0;
+        color: rgba(247, 247, 242, 0.84);
+        font-size: 13px;
+        line-height: 1.6;
+      }
+      .status-list {
+        margin: 0;
+        padding-left: 18px;
+        color: rgba(247, 247, 242, 0.84);
+        font-size: 13px;
+        line-height: 1.6;
+      }
       .layout {
         display: grid;
-        grid-template-columns: 340px minmax(0, 1fr);
+        grid-template-columns: 320px minmax(0, 1fr);
         align-items: start;
-        gap: 12px;
-        padding: 12px;
+        gap: 14px;
+        padding: 14px;
       }
       .sidebar {
         position: sticky;
-        top: 12px;
+        top: 14px;
         align-self: start;
       }
       .panel {
         border: 1px solid var(--line);
-        border-radius: 16px;
-        padding: 14px;
-        background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(252, 253, 254, 0.86));
+        border-radius: 20px;
+        padding: 18px;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.93), rgba(251, 248, 242, 0.88));
       }
       .panel h2 {
-        margin: 0 0 10px;
-        font-size: 18px;
-        letter-spacing: -0.15px;
+        margin: 0 0 12px;
+        font-size: 20px;
+        letter-spacing: -0.2px;
       }
       .panel p,
       .panel li,
@@ -158,6 +217,15 @@ async def root() -> str:
       }
       .stack > * + * {
         margin-top: 14px;
+      }
+      .section-kicker {
+        display: inline-block;
+        margin-bottom: 8px;
+        color: var(--accent);
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.45px;
+        text-transform: uppercase;
       }
       .helper {
         margin-bottom: 8px;
@@ -193,20 +261,34 @@ async def root() -> str:
         font-size: 12px;
         font-weight: 700;
       }
+      .how-list,
+      .judge-list {
+        margin: 0;
+        padding-left: 18px;
+      }
+      .how-list li,
+      .judge-list li {
+        color: var(--muted);
+        line-height: 1.65;
+      }
+      .divider {
+        height: 1px;
+        background: linear-gradient(90deg, transparent, var(--line), transparent);
+      }
       .playground {
         display: grid;
-        gap: 12px;
+        gap: 14px;
       }
       .summary-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-        gap: 8px;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 10px;
       }
       .summary-card {
         border: 1px solid var(--line);
-        border-radius: 14px;
+        border-radius: 16px;
         background: var(--card-strong);
-        padding: 11px 13px;
+        padding: 13px 14px;
       }
       .summary-card strong {
         display: block;
@@ -224,19 +306,19 @@ async def root() -> str:
       .toolbar {
         display: grid;
         grid-template-columns: minmax(0, 1fr) 120px 160px;
-        gap: 9px;
+        gap: 10px;
       }
       .editor-grid {
         display: grid;
         grid-template-columns: minmax(0, 1.25fr) minmax(280px, 0.75fr);
-        gap: 12px;
-        margin-top: 12px;
+        gap: 14px;
+        margin-top: 14px;
       }
       .note-card {
         border: 1px solid var(--line);
-        border-radius: 12px;
-        background: #fbfdfe;
-        padding: 12px;
+        border-radius: 16px;
+        background: linear-gradient(180deg, #fcf9f3, #f7f2e8);
+        padding: 14px;
       }
       .note-card strong {
         display: block;
@@ -296,9 +378,9 @@ async def root() -> str:
       }
       button.primary {
         border-color: transparent;
-        background: linear-gradient(135deg, #1e5367, #2a6679);
+        background: linear-gradient(135deg, #295f56, #173f39);
         color: white;
-        box-shadow: 0 10px 22px rgba(31, 83, 102, 0.12);
+        box-shadow: 0 10px 22px rgba(23, 63, 57, 0.18);
       }
       .pill {
         min-height: 48px;
@@ -317,7 +399,7 @@ async def root() -> str:
       .json-grid {
         display: grid;
         grid-template-columns: 1.05fr 0.95fr;
-        gap: 12px;
+        gap: 14px;
       }
       .json-wide {
         margin-top: 0;
@@ -335,7 +417,7 @@ async def root() -> str:
         align-items: center;
         padding: 10px 12px;
         border-bottom: 1px solid var(--line);
-        background: rgba(255, 255, 255, 0.82);
+        background: rgba(255, 252, 247, 0.92);
       }
       .json-box header strong {
         font-size: 13px;
@@ -372,6 +454,12 @@ async def root() -> str:
         color: var(--accent);
       }
       @media (max-width: 1180px) {
+        .topbar {
+          grid-template-columns: 1fr;
+        }
+        .hero-grid {
+          grid-template-columns: 1fr;
+        }
         .layout {
           grid-template-columns: 1fr;
         }
@@ -411,7 +499,7 @@ async def root() -> str:
           width: 100%;
         }
         h1 {
-          font-size: 28px;
+          font-size: 34px;
         }
       }
     </style>
@@ -420,28 +508,76 @@ async def root() -> str:
     <main>
       <section class="shell">
         <div class="topbar">
-          <div>
+          <div class="hero-copy">
             <div class="eyebrow">
               <span class="status-dot"></span>
               OpenEnv Environment Live
             </div>
             <h1>Support Triage Environment</h1>
             <p class="subtitle">
-              A compact playground for resetting episodes, sending actions, and inspecting
-              JSON responses from the deployed customer support triage simulator.
+              A real customer-support workflow for OpenEnv evaluation. Review the queue,
+              classify issues, write safe replies, route tickets to the right team, and
+              finish each task with strong partial-credit signals the judge can inspect.
             </p>
+            <div class="hero-grid">
+              <div class="mini-card">
+                <strong>What This Tests</strong>
+                <span>Reasoning + Ops</span>
+                <p>Ticket routing, safe customer communication, escalation judgment, and queue prioritization.</p>
+              </div>
+              <div class="mini-card">
+                <strong>Judge Flow</strong>
+                <span>Reset -> Step</span>
+                <p>Start an episode, inspect the generated task, then advance actions and watch score and state evolve.</p>
+              </div>
+              <div class="mini-card">
+                <strong>Built For Review</strong>
+                <span>Typed + Visible</span>
+                <p>The UI exposes schema, live state, and latest response so behavior is easy to audit quickly.</p>
+              </div>
+            </div>
           </div>
           <div class="status-card">
             <strong>Current Service</strong>
             <span id="service-meta">Loading metadata...</span>
+            <p>The live build should let a judge understand the environment, run one episode, and inspect raw outputs without guessing where to click.</p>
+            <ul class="status-list">
+              <li>Use <code>Reset</code> to generate a fresh task.</li>
+              <li>Use <code>Suggested Action</code> for the next valid move.</li>
+              <li>Use <code>Step</code> to see reward, score, state, and done flag update.</li>
+            </ul>
           </div>
         </div>
 
         <div class="layout">
           <aside class="panel stack sidebar">
             <div>
+              <span class="section-kicker">Overview</span>
               <h2>Quick Start</h2>
-              <p>Use the playground to start an episode, send actions, inspect state, and view raw JSON from the live OpenEnv server.</p>
+              <p>Use the controls on the right to run a full episode. Everything a reviewer needs is visible on one page: task summary, live state, latest response, and the OpenEnv schema.</p>
+            </div>
+
+            <div class="divider"></div>
+
+            <div>
+              <span class="section-kicker">How To Test</span>
+              <ol class="how-list">
+                <li>Choose a task and click <code>Reset</code>.</li>
+                <li>Read the task summary cards and inspect the generated state.</li>
+                <li>Click <code>Suggested Action</code> to populate the next valid move.</li>
+                <li>Click <code>Step</code> repeatedly until <code>Done</code> becomes <code>true</code>.</li>
+                <li>Inspect <code>Latest Response</code>, <code>Current State</code>, and <code>Schema Snapshot</code>.</li>
+              </ol>
+            </div>
+
+            <div>
+              <span class="section-kicker">Judge Checklist</span>
+              <ul class="judge-list">
+                <li><code>/reset</code> returns a live task with typed observation payloads.</li>
+                <li><code>/step</code> updates reward, score, done flag, and state consistently.</li>
+                <li><code>/schema</code> documents the action surface for direct evaluation.</li>
+                <li>The task list covers easy, medium, and hard support-triage scenarios.</li>
+              </ul>
             </div>
 
             <div>
@@ -493,6 +629,7 @@ GET  /schema</div>
 
           <section class="playground">
             <div class="panel">
+              <span class="section-kicker">Interactive Runner</span>
               <h2>Playground</h2>
               <div class="summary-grid" style="margin-bottom: 12px;">
                 <div class="summary-card"><strong>Task</strong><span id="task-text">billing_refund_easy</span></div>
@@ -538,6 +675,7 @@ GET  /schema</div>
                     <li><code>Suggested Action</code> uses current state and real ticket IDs.</li>
                     <li><code>Step</code> updates reward, score, done flag, state, and raw response.</li>
                     <li><code>Get State</code> refreshes the internal environment snapshot.</li>
+                    <li><code>Refresh Schema</code> shows the exact OpenEnv surface the judge can validate.</li>
                   </ul>
                 </div>
               </div>
