@@ -753,7 +753,11 @@ GET  /schema</div>
       }
 
       function updateSummary(payload, statePayload) {
-        const reward = payload && payload.reward != null ? Number(payload.reward) : 0;
+        const reward = payload && payload.reward != null
+          ? Number(payload.reward)
+          : payload && payload.observation && payload.observation.reward != null
+            ? Number(payload.observation.reward)
+            : 0;
         rewardText.textContent = Number.isFinite(reward) ? reward.toFixed(2) : "0.00";
         doneText.textContent = payload ? String(Boolean(payload.done)) : doneText.textContent;
         const score = payload && payload.observation && payload.observation.progress
@@ -955,7 +959,7 @@ GET  /schema</div>
         const response = await fetch("/step", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action }),
+          body: JSON.stringify(action),
         });
         const payload = await response.json();
         latestObservation = payload.observation || null;
