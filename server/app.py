@@ -748,9 +748,49 @@ GET  /schema</div>
         return JSON.stringify(data, null, 2);
       }
 
+      function findNestedObject(value, predicate, seen = new WeakSet()) {
+        if (!value || typeof value !== "object") {
+          return null;
+        }
+        if (seen.has(value)) {
+          return null;
+        }
+        seen.add(value);
+        if (predicate(value)) {
+          return value;
+        }
+        if (Array.isArray(value)) {
+          for (const item of value) {
+            const match = findNestedObject(item, predicate, seen);
+            if (match) {
+              return match;
+            }
+          }
+          return null;
+        }
+        for (const nested of Object.values(value)) {
+          const match = findNestedObject(nested, predicate, seen);
+          if (match) {
+            return match;
+          }
+        }
+        return null;
+      }
+
       function extractObservationPayload(payload) {
         if (!payload || typeof payload !== "object") {
           return null;
+        }
+        const nestedObservation = findNestedObject(
+          payload,
+          (candidate) =>
+            !!candidate &&
+            typeof candidate === "object" &&
+            candidate.task &&
+            Array.isArray(candidate.queue)
+        );
+        if (nestedObservation) {
+          return nestedObservation;
         }
         return payload.observation && typeof payload.observation === "object"
           ? payload.observation
@@ -766,6 +806,16 @@ GET  /schema</div>
         }
         if (Array.isArray(payload.tickets)) {
           return payload;
+        }
+        const nestedState = findNestedObject(
+          payload,
+          (candidate) =>
+            !!candidate &&
+            typeof candidate === "object" &&
+            Array.isArray(candidate.tickets)
+        );
+        if (nestedState) {
+          return nestedState;
         }
         return null;
       }
