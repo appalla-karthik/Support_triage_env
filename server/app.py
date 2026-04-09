@@ -300,8 +300,11 @@ async def root() -> str:
       .summary-card span {
         display: block;
         margin-top: 6px;
-        font-size: 18px;
+        font-size: 16px;
         font-weight: 800;
+        line-height: 1.25;
+        overflow-wrap: anywhere;
+        word-break: break-word;
       }
       .toolbar {
         display: grid;
