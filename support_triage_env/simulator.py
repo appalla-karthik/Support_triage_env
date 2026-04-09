@@ -34,7 +34,7 @@ class SupportTriageSimulator:
         self._grader: BaseTaskGrader | None = None
         self._last_reward = SupportTriageReward(
             value=0.0,
-            task_score=0.0,
+            task_score=0.0001,
             score_delta=0.0,
             components={},
             penalties={},
