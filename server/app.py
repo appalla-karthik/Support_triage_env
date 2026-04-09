@@ -748,20 +748,43 @@ GET  /schema</div>
         return JSON.stringify(data, null, 2);
       }
 
+      function extractObservationPayload(payload) {
+        if (!payload || typeof payload !== "object") {
+          return null;
+        }
+        return payload.observation && typeof payload.observation === "object"
+          ? payload.observation
+          : payload;
+      }
+
+      function extractStatePayload(payload) {
+        if (!payload || typeof payload !== "object") {
+          return null;
+        }
+        if (payload.state && typeof payload.state === "object") {
+          return payload.state;
+        }
+        if (Array.isArray(payload.tickets)) {
+          return payload;
+        }
+        return null;
+      }
+
       function setStatus(text) {
         statusText.textContent = text;
       }
 
       function updateSummary(payload, statePayload) {
+        const observationPayload = extractObservationPayload(payload);
         const reward = payload && payload.reward != null
           ? Number(payload.reward)
-          : payload && payload.observation && payload.observation.reward != null
-            ? Number(payload.observation.reward)
+          : observationPayload && observationPayload.reward != null
+            ? Number(observationPayload.reward)
             : 0;
         rewardText.textContent = Number.isFinite(reward) ? reward.toFixed(2) : "0.00";
         doneText.textContent = payload ? String(Boolean(payload.done)) : doneText.textContent;
-        const score = payload && payload.observation && payload.observation.progress
-          ? payload.observation.progress.score
+        const score = observationPayload && observationPayload.progress
+          ? observationPayload.progress.score
           : statePayload && statePayload.progress
             ? statePayload.progress.score
             : null;
@@ -916,10 +939,10 @@ GET  /schema</div>
       async function refreshState() {
         const response = await fetch("/state");
         const payload = await response.json();
-        latestState = payload;
+        latestState = extractStatePayload(payload);
         stateKind.textContent = "state";
         stateJson.textContent = pretty(payload);
-        updateSummary(latestResult, payload);
+        updateSummary(latestResult, latestState);
         return payload;
       }
 
@@ -935,11 +958,17 @@ GET  /schema</div>
           body: JSON.stringify(body),
         });
         const payload = await response.json();
-        latestObservation = payload.observation || null;
+        latestObservation = extractObservationPayload(payload);
+        latestState = extractStatePayload(payload) || latestState;
         latestResult = payload;
         responseKind.textContent = "reset";
         responseJson.textContent = pretty(payload);
-        await refreshState();
+        try {
+          await refreshState();
+        } catch (error) {
+          stateKind.textContent = "state-error";
+          stateJson.textContent = pretty({ error: "State fetch failed", detail: String(error) });
+        }
         updateSummary(payload, latestState);
         setStatus(response.ok ? "Episode reset successfully" : "Reset failed");
         buildSuggestedActionFromState();
@@ -962,11 +991,17 @@ GET  /schema</div>
           body: JSON.stringify(action),
         });
         const payload = await response.json();
-        latestObservation = payload.observation || null;
+        latestObservation = extractObservationPayload(payload);
+        latestState = extractStatePayload(payload) || latestState;
         latestResult = payload;
         responseKind.textContent = "step";
         responseJson.textContent = pretty(payload);
-        await refreshState();
+        try {
+          await refreshState();
+        } catch (error) {
+          stateKind.textContent = "state-error";
+          stateJson.textContent = pretty({ error: "State fetch failed", detail: String(error) });
+        }
         updateSummary(payload, latestState);
         setStatus(response.ok ? "Action executed" : "Step request failed");
         buildSuggestedActionFromState();
