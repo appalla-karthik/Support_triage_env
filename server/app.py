@@ -1072,7 +1072,7 @@ GET  /schema</div>
         const response = await fetch("/step", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(action),
+          body: JSON.stringify({ action }),
         });
         const payload = await response.json();
         latestObservation = extractObservationPayload(payload);
