@@ -787,6 +787,17 @@ GET  /schema</div>
         };
       }
 
+      function getWorkingTickets() {
+        if (latestState && Array.isArray(latestState.tickets) && latestState.tickets.length > 0) {
+          return latestState.tickets;
+        }
+        const observationState = buildStateFromObservation(latestObservation);
+        if (observationState && Array.isArray(observationState.tickets) && observationState.tickets.length > 0) {
+          return observationState.tickets;
+        }
+        return [];
+      }
+
       function setStatus(text) {
         statusText.textContent = text;
       }
@@ -880,12 +891,14 @@ GET  /schema</div>
       }
 
       function buildSuggestedActionFromState() {
-        if (!latestState || !Array.isArray(latestState.tickets)) {
+        const workingTickets = getWorkingTickets();
+        if (!workingTickets.length) {
+          setStatus("Reset first so the UI can load real ticket IDs.");
           fillSample();
           return;
         }
 
-        const tickets = [...latestState.tickets].sort((a, b) => {
+        const tickets = [...workingTickets].sort((a, b) => {
           const priorityRank = { urgent: 0, high: 1, medium: 2, low: 3 };
           const aDefaults = inferCategory(a);
           const bDefaults = inferCategory(b);
@@ -951,6 +964,7 @@ GET  /schema</div>
         }
 
         actionInput.value = pretty({ action_type: "finish" });
+        setStatus("Suggested next action generated.");
       }
 
       async function refreshState() {
