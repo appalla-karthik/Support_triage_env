@@ -17,7 +17,9 @@ try:
 except ModuleNotFoundError:
     SupportTriageEnv = Any
 
+API_BASE_URL = os.getenv("API_BASE_URL", "https://api.openai.com/v1")
 MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
+HF_TOKEN = os.getenv("HF_TOKEN")
 LOCAL_IMAGE_NAME = os.getenv("LOCAL_IMAGE_NAME")
 ENV_BASE_URL = os.getenv("ENV_BASE_URL")
 TASK_NAME = os.getenv("SUPPORT_TRIAGE_TASK")
@@ -100,15 +102,13 @@ def log_step(
 
 
 def log_end(
-    task: str,
     success: bool,
     steps: int,
-    score: float,
     rewards: list[float],
 ) -> None:
     reward_values = ",".join(f"{reward:.2f}" for reward in rewards)
     print(
-        f"[END] task={task} success={str(success).lower()} steps={steps} score={score:.4f} rewards={reward_values}",
+        f"[END] success={str(success).lower()} steps={steps} rewards={reward_values}",
         flush=True,
     )
 
@@ -251,11 +251,9 @@ def get_model_action(client: OpenAI, observation: dict, state: dict) -> SupportT
 
 
 def create_model_client() -> OpenAI | None:
-    api_base_url = os.getenv("API_BASE_URL")
-    api_key = os.getenv("API_KEY") or os.getenv("HF_TOKEN")
-    if not api_base_url or not api_key:
-        return None
-    return OpenAI(base_url=api_base_url, api_key=api_key)
+    if not HF_TOKEN:
+        raise ValueError("HF_TOKEN environment variable is required")
+    return OpenAI(base_url=API_BASE_URL, api_key=HF_TOKEN)
 
 
 def ensure_proxy_request(client: OpenAI) -> None:
@@ -824,9 +822,10 @@ async def run_task(
                 observation_payload,
                 state_payload,
             )
-            action_str = sanitize_single_line(
-                json.dumps(action.model_dump(mode="json", exclude_none=True))
-            )
+            action_payload = action.model_dump(mode="json", exclude_none=True)
+            if action_payload.get("metadata") == {}:
+                action_payload.pop("metadata", None)
+            action_str = sanitize_single_line(json.dumps(action_payload))
 
             error = None
             try:
@@ -872,14 +871,18 @@ async def run_task(
         success = final_score >= SUCCESS_SCORE_THRESHOLD
     except Exception as exc:
         fatal_error = sanitize_single_line(str(exc))
+    finally:
+        try:
+            await env.close()
+        except Exception as exc:
+            if fatal_error is None:
+                fatal_error = sanitize_single_line(str(exc))
 
-    log_end(
-        task=task_name,
-        success=success,
-        steps=steps_taken,
-        score=final_score,
-        rewards=rewards,
-    )
+        log_end(
+            success=success,
+            steps=steps_taken,
+            rewards=rewards,
+        )
     return {
         "task": task_name,
         "success": success,
@@ -893,50 +896,31 @@ async def run_task(
 
 
 async def main() -> None:
-    client = create_model_client()
-    env = None
+    client = None
     task_results: list[dict] = []
     fatal_error: str | None = None
     proxy_request_attempted = False
     proxy_request_succeeded = False
     task_names = configured_task_names()
-    task_label = ",".join(task_names) if task_names else "no_task"
-    overall_rewards: list[float] = []
-
-    # Emit a top-level structured block before any fallible setup so the
-    # validator always sees stdout markers even if environment bootstrap fails.
-    log_start(task=task_label, env=BENCHMARK, model=MODEL_NAME)
-    log_step(step=0, action="bootstrap", reward=0.0, done=False, error=None)
 
     try:
-        env = await create_env()
+        client = create_model_client()
 
-        if client is not None:
-            proxy_request_attempted = True
-            ensure_proxy_request(client)
-            proxy_request_succeeded = True
+        proxy_request_attempted = True
+        ensure_proxy_request(client)
+        proxy_request_succeeded = True
 
         for task_name in task_names:
+            env = await create_env()
             task_result = await run_task(env, client, task_name)
             task_results.append(task_result)
-            overall_rewards.extend(task_result["rewards"])
     except Exception as exc:
         fatal_error = sanitize_single_line(str(exc))
-        log_step(
-            step=0,
-            action="fatal_error",
-            reward=0.0,
-            done=True,
-            error=fatal_error,
-        )
+        fallback_task = task_names[0] if task_names else "no_task"
+        log_start(task=fallback_task, env=BENCHMARK, model=MODEL_NAME)
+        log_step(step=0, action="fatal_error", reward=0.0, done=True, error=fatal_error)
+        log_end(success=False, steps=0, rewards=[])
     finally:
-        if env is not None:
-            try:
-                await env.close()
-            except Exception as exc:
-                if fatal_error is None:
-                    fatal_error = sanitize_single_line(str(exc))
-
         successful_tasks = sum(1 for item in task_results if item["success"])
         mean_score = (
             strict_unit_interval(
@@ -973,13 +957,6 @@ async def main() -> None:
                 "successful_tasks": successful_tasks,
                 "tasks": task_results,
             }
-        )
-        log_end(
-            task=task_label,
-            success=successful_tasks == len(task_results) and bool(task_results),
-            steps=total_steps,
-            score=mean_score,
-            rewards=overall_rewards,
         )
 
 

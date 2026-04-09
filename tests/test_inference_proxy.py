@@ -11,9 +11,8 @@ def test_create_model_client_uses_proxy_env(monkeypatch):
         captured["api_key"] = api_key
         return SimpleNamespace()
 
-    monkeypatch.setenv("API_BASE_URL", "https://proxy.example/v1")
-    monkeypatch.setenv("API_KEY", "proxy-key")
-    monkeypatch.setenv("HF_TOKEN", "should-not-be-used")
+    monkeypatch.setattr(inference, "API_BASE_URL", "https://proxy.example/v1")
+    monkeypatch.setattr(inference, "HF_TOKEN", "hf-token")
     monkeypatch.setenv("OPENAI_API_KEY", "should-not-be-used")
     monkeypatch.setattr(inference, "OpenAI", fake_openai)
 
@@ -22,20 +21,24 @@ def test_create_model_client_uses_proxy_env(monkeypatch):
     assert client is not None
     assert captured == {
         "base_url": "https://proxy.example/v1",
-        "api_key": "proxy-key",
+        "api_key": "hf-token",
     }
 
 
-def test_create_model_client_requires_api_key(monkeypatch):
-    monkeypatch.setenv("API_BASE_URL", "https://proxy.example/v1")
-    monkeypatch.delenv("API_KEY", raising=False)
-    monkeypatch.delenv("HF_TOKEN", raising=False)
+def test_create_model_client_requires_hf_token(monkeypatch):
+    monkeypatch.setattr(inference, "API_BASE_URL", "https://proxy.example/v1")
+    monkeypatch.setattr(inference, "HF_TOKEN", None)
     monkeypatch.setenv("OPENAI_API_KEY", "openai-key")
 
-    assert inference.create_model_client() is None
+    try:
+        inference.create_model_client()
+    except ValueError as exc:
+        assert "HF_TOKEN environment variable is required" in str(exc)
+    else:
+        raise AssertionError("Expected create_model_client to require HF_TOKEN")
 
 
-def test_create_model_client_falls_back_to_hf_token(monkeypatch):
+def test_create_model_client_uses_default_api_base(monkeypatch):
     captured: dict[str, str] = {}
 
     def fake_openai(*, base_url: str, api_key: str):
@@ -43,17 +46,15 @@ def test_create_model_client_falls_back_to_hf_token(monkeypatch):
         captured["api_key"] = api_key
         return SimpleNamespace()
 
-    monkeypatch.setenv("API_BASE_URL", "https://proxy.example/v1")
-    monkeypatch.delenv("API_KEY", raising=False)
-    monkeypatch.setenv("HF_TOKEN", "hf-token")
-    monkeypatch.setenv("OPENAI_API_KEY", "openai-key")
+    monkeypatch.setattr(inference, "API_BASE_URL", "https://api.openai.com/v1")
+    monkeypatch.setattr(inference, "HF_TOKEN", "hf-token")
     monkeypatch.setattr(inference, "OpenAI", fake_openai)
 
     client = inference.create_model_client()
 
     assert client is not None
     assert captured == {
-        "base_url": "https://proxy.example/v1",
+        "base_url": "https://api.openai.com/v1",
         "api_key": "hf-token",
     }
 
