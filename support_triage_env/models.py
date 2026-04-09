@@ -4,7 +4,14 @@ from enum import Enum
 from typing import Literal
 
 from openenv.core.env_server.types import Action, Observation, State
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+
+STRICT_SCORE_EPSILON = 1e-4
+
+
+def strict_unit_interval(value: float) -> float:
+    return round(min(1.0 - STRICT_SCORE_EPSILON, max(STRICT_SCORE_EPSILON, float(value))), 4)
 
 
 class ActionType(str, Enum):
@@ -122,6 +129,11 @@ class GradingSnapshot(BaseModel):
     outstanding_requirements: list[str] = Field(default_factory=list)
     violations: list[str] = Field(default_factory=list)
 
+    @field_validator("score", mode="before")
+    @classmethod
+    def _clamp_score(cls, value: float) -> float:
+        return strict_unit_interval(value)
+
 
 class SupportTriageReward(BaseModel):
     value: float = Field(..., description="Scalar reward for the current step.")
@@ -130,6 +142,11 @@ class SupportTriageReward(BaseModel):
     components: dict[str, float] = Field(default_factory=dict)
     penalties: dict[str, float] = Field(default_factory=dict)
     rationale: list[str] = Field(default_factory=list)
+
+    @field_validator("task_score", mode="before")
+    @classmethod
+    def _clamp_task_score(cls, value: float) -> float:
+        return strict_unit_interval(value)
 
 
 class ActionLogEntry(BaseModel):
@@ -181,3 +198,8 @@ class SupportTriageState(State):
     final_score: float = 0.0001
     done: bool = False
     progress: GradingSnapshot = Field(default_factory=lambda: GradingSnapshot(score=0.0001))
+
+    @field_validator("final_score", mode="before")
+    @classmethod
+    def _clamp_final_score(cls, value: float) -> float:
+        return strict_unit_interval(value)
