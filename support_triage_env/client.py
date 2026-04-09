@@ -40,7 +40,7 @@ class SupportTriageEnv(
                 else None
             ),
             last_action_result=obs_data.get("last_action_result", ""),
-            progress=GradingSnapshot(**obs_data.get("progress", {"score": 0.0001})),
+            progress=GradingSnapshot(**obs_data.get("progress", {"score": 0.01})),
             available_actions=obs_data.get("available_actions", []),
             metadata=obs_data.get("metadata", {}),
         )
@@ -64,7 +64,7 @@ class SupportTriageEnv(
                 ActionLogEntry(**entry) for entry in payload.get("action_history", [])
             ],
             cumulative_reward=payload.get("cumulative_reward", 0.0),
-            final_score=payload.get("final_score", 0.0001),
+            final_score=payload.get("final_score", 0.01),
             done=payload.get("done", False),
-            progress=GradingSnapshot(**payload.get("progress", {"score": 0.0001})),
+            progress=GradingSnapshot(**payload.get("progress", {"score": 0.01})),
         )
