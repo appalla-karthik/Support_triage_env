@@ -14,6 +14,9 @@ def strict_unit_interval(value: float) -> float:
     return round(min(1.0 - STRICT_SCORE_EPSILON, max(STRICT_SCORE_EPSILON, float(value))), 4)
 
 
+DEFAULT_STRICT_SCORE = strict_unit_interval(0.0)
+
+
 class ActionType(str, Enum):
     VIEW_TICKET = "view_ticket"
     CLASSIFY_TICKET = "classify_ticket"
@@ -180,7 +183,9 @@ class SupportTriageObservation(Observation):
     queue: list[QueueTicketView] = Field(default_factory=list)
     focused_ticket: TicketRecord | None = None
     last_action_result: str = ""
-    progress: GradingSnapshot = Field(default_factory=lambda: GradingSnapshot(score=0.0001))
+    progress: GradingSnapshot = Field(
+        default_factory=lambda: GradingSnapshot(score=DEFAULT_STRICT_SCORE)
+    )
     available_actions: list[str] = Field(default_factory=list)
 
 
@@ -195,9 +200,11 @@ class SupportTriageState(State):
     tickets: list[TicketRecord] = Field(default_factory=list)
     action_history: list[ActionLogEntry] = Field(default_factory=list)
     cumulative_reward: float = 0.0
-    final_score: float = 0.0001
+    final_score: float = DEFAULT_STRICT_SCORE
     done: bool = False
-    progress: GradingSnapshot = Field(default_factory=lambda: GradingSnapshot(score=0.0001))
+    progress: GradingSnapshot = Field(
+        default_factory=lambda: GradingSnapshot(score=DEFAULT_STRICT_SCORE)
+    )
 
     @field_validator("final_score", mode="before")
     @classmethod

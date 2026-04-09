@@ -15,6 +15,7 @@ from support_triage_env import (
     SupportTriageSimulator,
     SupportTriageState,
 )
+from support_triage_env.models import DEFAULT_STRICT_SCORE, strict_unit_interval
 
 MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
 LOCAL_IMAGE_NAME = os.getenv("LOCAL_IMAGE_NAME")
@@ -767,9 +768,9 @@ async def run_task(
     rewards: list[float] = []
     steps_taken = 0
     success = False
-    final_score = 0.0
+    final_score = DEFAULT_STRICT_SCORE
     cumulative_reward = 0.0
-    final_progress: dict = {"score": 0.0}
+    final_progress: dict = {"score": DEFAULT_STRICT_SCORE}
     fatal_error: str | None = None
 
     log_start(task=task_name, env=BENCHMARK, model=MODEL_NAME)
@@ -854,9 +855,12 @@ async def run_task(
                 break
 
         state = await env.state()
-        final_score = float(state.final_score)
+        final_score = strict_unit_interval(float(state.final_score))
         cumulative_reward = float(state.cumulative_reward)
         final_progress = state.progress.model_dump(mode="json")
+        final_progress["score"] = strict_unit_interval(
+            float(final_progress.get("score", DEFAULT_STRICT_SCORE))
+        )
         success = final_score >= SUCCESS_SCORE_THRESHOLD
     except Exception as exc:
         fatal_error = sanitize_single_line(str(exc))
@@ -872,7 +876,7 @@ async def run_task(
         "task": task_name,
         "success": success,
         "steps": steps_taken,
-        "final_score": round(final_score, 4),
+        "final_score": strict_unit_interval(final_score),
         "cumulative_reward": round(cumulative_reward, 4),
         "rewards": [round(reward, 4) for reward in rewards],
         "progress": final_progress,
@@ -927,9 +931,11 @@ async def main() -> None:
 
         successful_tasks = sum(1 for item in task_results if item["success"])
         mean_score = (
-            sum(item["final_score"] for item in task_results) / len(task_results)
+            strict_unit_interval(
+                sum(item["final_score"] for item in task_results) / len(task_results)
+            )
             if task_results
-            else 0.0
+            else DEFAULT_STRICT_SCORE
         )
         total_reward = sum(item["cumulative_reward"] for item in task_results)
         total_steps = sum(item["steps"] for item in task_results)
@@ -943,7 +949,7 @@ async def main() -> None:
                 "model": MODEL_NAME,
                 "success": successful_tasks == len(task_results) and bool(task_results),
                 "steps": total_steps,
-                "final_score": round(mean_score, 4),
+                "final_score": mean_score,
                 "cumulative_reward": round(total_reward, 4),
                 "rewards": [item["rewards"] for item in task_results],
                 "progress": summary_progress,
