@@ -305,6 +305,15 @@ async def root() -> str:
         line-height: 1.25;
         overflow-wrap: anywhere;
         word-break: break-word;
+        min-height: 2.5em;
+      }
+      .summary-card .metric-value {
+        min-height: auto;
+        white-space: nowrap;
+        font-variant-numeric: tabular-nums;
+      }
+      .summary-card .task-value {
+        max-width: 100%;
       }
       .toolbar {
         display: grid;
@@ -635,11 +644,11 @@ GET  /schema</div>
               <span class="section-kicker">Interactive Runner</span>
               <h2>Playground</h2>
               <div class="summary-grid" style="margin-bottom: 12px;">
-                <div class="summary-card"><strong>Task</strong><span id="task-text">billing_refund_easy</span></div>
+                <div class="summary-card"><strong>Task</strong><span class="task-value" id="task-text">billing_refund_easy</span></div>
                 <div class="summary-card"><strong>Status</strong><span id="status-text">Ready</span></div>
-                <div class="summary-card"><strong>Reward</strong><span id="reward-text">-</span></div>
-                <div class="summary-card"><strong>Score</strong><span id="score-text">-</span></div>
-                <div class="summary-card"><strong>Steps</strong><span id="steps-text">0</span></div>
+                <div class="summary-card"><strong>Reward</strong><span class="metric-value" id="reward-text">0.00</span></div>
+                <div class="summary-card"><strong>Score</strong><span class="metric-value" id="score-text">0.01</span></div>
+                <div class="summary-card"><strong>Steps</strong><span class="metric-value" id="steps-text">0</span></div>
               </div>
               <div class="toolbar">
                 <div>
@@ -744,14 +753,16 @@ GET  /schema</div>
       }
 
       function updateSummary(payload, statePayload) {
-        rewardText.textContent = payload && payload.reward != null ? String(payload.reward) : "-";
+        const reward = payload && payload.reward != null ? Number(payload.reward) : 0;
+        rewardText.textContent = Number.isFinite(reward) ? reward.toFixed(2) : "0.00";
         doneText.textContent = payload ? String(Boolean(payload.done)) : doneText.textContent;
         const score = payload && payload.observation && payload.observation.progress
           ? payload.observation.progress.score
           : statePayload && statePayload.progress
             ? statePayload.progress.score
             : null;
-        scoreText.textContent = score == null ? "-" : String(score);
+        const parsedScore = score == null ? null : Number(score);
+        scoreText.textContent = parsedScore != null && Number.isFinite(parsedScore) ? parsedScore.toFixed(2) : "0.01";
         stepsText.textContent = statePayload && statePayload.step_count != null ? String(statePayload.step_count) : "0";
         taskText.textContent = taskInput.value;
       }
