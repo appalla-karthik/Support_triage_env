@@ -7,7 +7,7 @@ from openenv.core.env_server.types import Action, Observation, State
 from pydantic import BaseModel, Field, field_validator
 
 
-STRICT_SCORE_EPSILON = 1e-4
+STRICT_SCORE_EPSILON = 0.01
 
 
 def strict_unit_interval(value: float) -> float:

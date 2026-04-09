@@ -34,7 +34,7 @@ class SupportTriageSimulator:
         self._grader: BaseTaskGrader | None = None
         self._last_reward = SupportTriageReward(
             value=0.0,
-            task_score=0.0001,
+            task_score=0.01,
             score_delta=0.0,
             components={},
             penalties={},
@@ -73,9 +73,9 @@ class SupportTriageSimulator:
             tickets=[copy.deepcopy(ticket) for ticket in scenario.tickets],
             action_history=[],
             cumulative_reward=0.0,
-            final_score=0.0001,
+            final_score=0.01,
             done=False,
-            progress=GradingSnapshot(score=0.0001),
+            progress=GradingSnapshot(score=0.01),
         )
         initial_grade = self._grader.grade(initial_state)
         initial_payload = initial_state.model_dump()

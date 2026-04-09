@@ -43,7 +43,7 @@ def test_easy_task_can_reach_full_score():
     _, _, done, _ = env.step(SupportTriageAction(action_type=ActionType.FINISH))
 
     assert done is True
-    assert env.state().final_score == 0.9999
+    assert env.state().final_score == 0.99
 
 
 def test_medium_task_penalizes_premature_resolution():

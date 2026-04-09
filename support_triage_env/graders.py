@@ -13,7 +13,7 @@ from support_triage_env.models import (
 )
 from support_triage_env.tasks import TaskScenario
 
-_SCORE_EPSILON = 1e-4
+_SCORE_EPSILON = 0.01
 
 
 def _normalize(text: str) -> str:
