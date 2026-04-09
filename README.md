@@ -70,7 +70,7 @@ The OpenEnv server exposes the same environment over `/reset`, `/step`, `/state`
 - partial reply credit for including required policy-compliant content
 - penalties for unsafe advice, premature resolution, repeated actions, invalid actions, and per-step cost
 
-Final grader scores are deterministic and clipped to `0.0-1.0`.
+Final grader scores are deterministic and clipped strictly inside `(0.0, 1.0)`.
 
 ## Tasks
 
@@ -171,15 +171,16 @@ The required submission entrypoint is the root-level `inference.py`. It uses the
 
 - `API_BASE_URL`: model API base URL
 - `MODEL_NAME`: model identifier
-- `API_KEY`: model API key provided by the evaluator
+- `API_KEY`: preferred model API key provided by the evaluator
+- `HF_TOKEN`: accepted fallback token name if the evaluator exposes the key under this variable
 - `ENV_BASE_URL`: optional URL of a running environment server
 - `LOCAL_IMAGE_NAME`: optional Docker image name used when `ENV_BASE_URL` is not set
 
-For competition submissions, `inference.py` initializes the client strictly with
-`base_url=os.environ["API_BASE_URL"]` and `api_key=os.environ["API_KEY"]`, then
-makes an initial chat completion through that proxy before running the task loop.
-Do not substitute `HF_TOKEN`, `OPENAI_API_KEY`, or any hardcoded provider URL in
-the submission entrypoint.
+For competition submissions, `inference.py` initializes the client with
+`base_url=os.environ["API_BASE_URL"]` and prefers `api_key=os.environ["API_KEY"]`,
+falling back to `os.environ["HF_TOKEN"]` when needed. It then makes an initial
+chat completion through that proxy before running the task loop. Do not use
+`OPENAI_API_KEY` or any hardcoded provider URL in the submission entrypoint.
 
 Run against a locally running server:
 
@@ -231,8 +232,8 @@ It writes results to `outputs/baseline_scores.json`.
 
 Observed local inference runs with the current patched `inference.py` and `Qwen/Qwen2.5-72B-Instruct`:
 
-- `billing_refund_easy`: `final_score=1.00`, `cumulative_reward=0.85`, `steps=5`, `success=true`
-- `export_outage_medium`: `final_score=1.00`, `cumulative_reward=0.94`, `steps=6`, `success=true`
+- `billing_refund_easy`: `final_score=0.99`, `cumulative_reward=0.85`, `steps=5`, `success=true`
+- `export_outage_medium`: `final_score=0.99`, `cumulative_reward=0.94`, `steps=6`, `success=true`
 - `security_and_refund_hard`: passed locally in `7` steps with `success=true` using the same inference policy
 
 The baseline runner still emits:

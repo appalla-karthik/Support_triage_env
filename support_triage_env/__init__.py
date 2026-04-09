@@ -1,4 +1,3 @@
-from support_triage_env.client import SupportTriageEnv
 from support_triage_env.models import (
     ActionType,
     ResolutionCode,
@@ -13,6 +12,11 @@ from support_triage_env.models import (
 )
 from support_triage_env.simulator import SupportTriageSimulator
 from support_triage_env.synthetic_dataset import build_synthetic_dataset
+
+try:
+    from support_triage_env.client import SupportTriageEnv
+except ModuleNotFoundError:
+    SupportTriageEnv = None
 
 __all__ = [
     "ActionType",
