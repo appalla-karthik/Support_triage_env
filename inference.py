@@ -107,8 +107,7 @@ def log_end(
 ) -> None:
     reward_values = ",".join(f"{reward:.2f}" for reward in rewards)
     print(
-        f"[END] task={task} success={str(success).lower()} steps={steps} "
-        f"score={score:.2f} rewards={reward_values}",
+        f"[END] success={str(success).lower()} steps={steps} score={score:.4f} rewards={reward_values}",
         flush=True,
     )
 
