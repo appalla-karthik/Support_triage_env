@@ -13,6 +13,8 @@ from support_triage_env.models import (
 )
 from support_triage_env.tasks import TaskScenario
 
+_SCORE_EPSILON = 1e-4
+
 
 def _normalize(text: str) -> str:
     lowered = text.lower()
@@ -28,6 +30,10 @@ def _contains_any(text: str, phrases: list[str]) -> bool:
 
 def _all_outbound_text(ticket: TicketRecord) -> str:
     return "\n".join(ticket.outbound_messages + ticket.internal_notes)
+
+
+def _strict_score(value: float) -> float:
+    return round(min(1.0 - _SCORE_EPSILON, max(_SCORE_EPSILON, value)), 4)
 
 
 def _reply_score(
@@ -60,13 +66,6 @@ class BaseTaskGrader(ABC):
             if ticket.ticket_id == ticket_id:
                 return ticket
         raise KeyError(ticket_id)
-
-    def _strict_score(self, raw_score: float) -> float:
-        if raw_score <= 0.0:
-            return 0.01
-        if raw_score >= 1.0:
-            return 0.99
-        return raw_score
 
 class BillingRefundEasyGrader(BaseTaskGrader):
     def grade(self, state: SupportTriageState) -> GradingSnapshot:
@@ -121,10 +120,9 @@ class BillingRefundEasyGrader(BaseTaskGrader):
             penalties["unsafe_data_request"] = 0.20
             violations.append("Requested sensitive data over email")
 
-        score = max(0.0, min(1.0, sum(components.values()) - sum(penalties.values())))
-        score = self._strict_score(score)
+        score = _strict_score(sum(components.values()) - sum(penalties.values()))
         return GradingSnapshot(
-            score=round(score, 4),
+            score=score,
             components=components,
             penalties=penalties,
             satisfied_requirements=satisfied,
@@ -200,10 +198,9 @@ class ExportOutageMediumGrader(BaseTaskGrader):
             penalties["overpromise"] = 0.10
             violations.append("Promised an unsupported delivery ETA")
 
-        score = max(0.0, min(1.0, sum(components.values()) - sum(penalties.values())))
-        score = self._strict_score(score)
+        score = _strict_score(sum(components.values()) - sum(penalties.values()))
         return GradingSnapshot(
-            score=round(score, 4),
+            score=score,
             components=components,
             penalties=penalties,
             satisfied_requirements=satisfied,
@@ -354,10 +351,9 @@ class SecurityAndRefundHardGrader(BaseTaskGrader):
             penalties["unsafe_billing_request"] = 0.10
             violations.append("Requested sensitive billing data over email")
 
-        score = max(0.0, min(1.0, sum(components.values()) - sum(penalties.values())))
-        score = self._strict_score(score)
+        score = _strict_score(sum(components.values()) - sum(penalties.values()))
         return GradingSnapshot(
-            score=round(score, 4),
+            score=score,
             components=components,
             penalties=penalties,
             satisfied_requirements=satisfied,

@@ -163,7 +163,7 @@ class SupportTriageObservation(Observation):
     queue: list[QueueTicketView] = Field(default_factory=list)
     focused_ticket: TicketRecord | None = None
     last_action_result: str = ""
-    progress: GradingSnapshot = Field(default_factory=lambda: GradingSnapshot(score=0.0))
+    progress: GradingSnapshot = Field(default_factory=lambda: GradingSnapshot(score=0.0001))
     available_actions: list[str] = Field(default_factory=list)
 
 
@@ -178,6 +178,6 @@ class SupportTriageState(State):
     tickets: list[TicketRecord] = Field(default_factory=list)
     action_history: list[ActionLogEntry] = Field(default_factory=list)
     cumulative_reward: float = 0.0
-    final_score: float = 0.0
+    final_score: float = 0.0001
     done: bool = False
-    progress: GradingSnapshot = Field(default_factory=lambda: GradingSnapshot(score=0.0))
+    progress: GradingSnapshot = Field(default_factory=lambda: GradingSnapshot(score=0.0001))

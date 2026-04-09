@@ -73,9 +73,9 @@ class SupportTriageSimulator:
             tickets=[copy.deepcopy(ticket) for ticket in scenario.tickets],
             action_history=[],
             cumulative_reward=0.0,
-            final_score=0.0,
+            final_score=0.0001,
             done=False,
-            progress=GradingSnapshot(score=0.0),
+            progress=GradingSnapshot(score=0.0001),
         )
         initial_grade = self._grader.grade(initial_state)
         initial_payload = initial_state.model_dump()
