@@ -128,8 +128,14 @@ async def root() -> str:
       .layout {
         display: grid;
         grid-template-columns: 340px minmax(0, 1fr);
+        align-items: start;
         gap: 12px;
         padding: 12px;
+      }
+      .sidebar {
+        position: sticky;
+        top: 12px;
+        align-self: start;
       }
       .panel {
         border: 1px solid var(--line);
@@ -193,7 +199,7 @@ async def root() -> str:
       }
       .summary-grid {
         display: grid;
-        grid-template-columns: repeat(5, minmax(0, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
         gap: 8px;
       }
       .summary-card {
@@ -217,7 +223,7 @@ async def root() -> str:
       }
       .toolbar {
         display: grid;
-        grid-template-columns: 1fr 120px 160px;
+        grid-template-columns: minmax(0, 1fr) 120px 160px;
         gap: 9px;
       }
       .editor-grid {
@@ -265,6 +271,7 @@ async def root() -> str:
       }
       textarea {
         min-height: 198px;
+        max-height: 360px;
         resize: vertical;
         font-family: Consolas, "SFMono-Regular", monospace;
         font-size: 13px;
@@ -320,6 +327,7 @@ async def root() -> str:
         border-radius: 14px;
         background: #f5f9fb;
         overflow: hidden;
+        min-width: 0;
       }
       .json-box header {
         display: flex;
@@ -337,13 +345,25 @@ async def root() -> str:
       pre {
         margin: 0;
         padding: 14px;
-        min-height: 280px;
-        max-height: 440px;
+        min-height: 220px;
+        max-height: 420px;
         overflow: auto;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
         font-family: Consolas, "SFMono-Regular", monospace;
         font-size: 12px;
         line-height: 1.55;
         color: #294757;
+      }
+      #schema-json {
+        min-height: 180px;
+        max-height: 320px;
+      }
+      .status-inline {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
       }
       code {
         background: #edf4f7;
@@ -351,9 +371,20 @@ async def root() -> str:
         padding: 2px 6px;
         color: var(--accent);
       }
+      @media (max-width: 1180px) {
+        .layout {
+          grid-template-columns: 1fr;
+        }
+        .sidebar {
+          position: static;
+        }
+        .toolbar,
+        .editor-grid,
+        .json-grid {
+          grid-template-columns: 1fr;
+        }
+      }
       @media (max-width: 980px) {
-        .layout,
-        .json-grid,
         .summary-grid,
         .editor-grid {
           grid-template-columns: 1fr;
@@ -368,14 +399,16 @@ async def root() -> str:
         .layout {
           padding: 12px;
         }
+        .topbar {
+          flex-direction: column;
+          align-items: flex-start;
+        }
         .toolbar {
           grid-template-columns: 1fr;
         }
         .status-card {
           min-width: 0;
-        }
-        .summary-grid {
-          grid-template-columns: 1fr 1fr;
+          width: 100%;
         }
         h1 {
           font-size: 28px;
@@ -405,7 +438,7 @@ async def root() -> str:
         </div>
 
         <div class="layout">
-          <aside class="panel stack">
+          <aside class="panel stack sidebar">
             <div>
               <h2>Quick Start</h2>
               <p>Use the playground to start an episode, send actions, inspect state, and view raw JSON from the live OpenEnv server.</p>
@@ -461,7 +494,7 @@ GET  /schema</div>
           <section class="playground">
             <div class="panel">
               <h2>Playground</h2>
-            <div class="summary-grid" style="margin-bottom: 12px;">
+              <div class="summary-grid" style="margin-bottom: 12px;">
                 <div class="summary-card"><strong>Task</strong><span id="task-text">billing_refund_easy</span></div>
                 <div class="summary-card"><strong>Status</strong><span id="status-text">Ready</span></div>
                 <div class="summary-card"><strong>Reward</strong><span id="reward-text">-</span></div>
@@ -515,7 +548,9 @@ GET  /schema</div>
                 <button id="state-btn" type="button">Get State</button>
                 <button id="schema-btn" type="button">Refresh Schema</button>
               </div>
-              <div class="pill" style="margin-top: 12px;"><strong>Done</strong><span id="done-text">false</span></div>
+              <div class="pill" style="margin-top: 12px;">
+                <span class="status-inline"><strong>Done</strong><span id="done-text">false</span></span>
+              </div>
             </div>
 
             <div class="json-grid">
