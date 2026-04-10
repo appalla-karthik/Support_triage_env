@@ -817,6 +817,9 @@ GET  /schema</div>
         if (nestedState) {
           return nestedState;
         }
+        if (typeof payload.step_count === "number" || typeof payload.episode_id === "string") {
+          return payload;
+        }
         return null;
       }
 
@@ -1020,7 +1023,10 @@ GET  /schema</div>
       async function refreshState() {
         const response = await fetch("/state");
         const payload = await response.json();
-        latestState = extractStatePayload(payload);
+        const parsedState = extractStatePayload(payload);
+        latestState = parsedState
+          ? { ...(latestState || {}), ...parsedState }
+          : latestState;
         stateKind.textContent = "state";
         stateJson.textContent = pretty(payload);
         updateSummary(latestResult, latestState);
