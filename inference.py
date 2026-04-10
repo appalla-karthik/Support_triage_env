@@ -104,11 +104,12 @@ def log_step(
 def log_end(
     success: bool,
     steps: int,
+    score: float,
     rewards: list[float],
 ) -> None:
     reward_values = ",".join(f"{reward:.2f}" for reward in rewards)
     print(
-        f"[END] success={str(success).lower()} steps={steps} rewards={reward_values}",
+        f"[END] success={str(success).lower()} steps={steps} score={score:.2f} rewards={reward_values}",
         flush=True,
     )
 
@@ -881,6 +882,7 @@ async def run_task(
         log_end(
             success=success,
             steps=steps_taken,
+            score=final_score,
             rewards=rewards,
         )
     return {
@@ -919,7 +921,7 @@ async def main() -> None:
         fallback_task = task_names[0] if task_names else "no_task"
         log_start(task=fallback_task, env=BENCHMARK, model=MODEL_NAME)
         log_step(step=0, action="fatal_error", reward=0.0, done=True, error=fatal_error)
-        log_end(success=False, steps=0, rewards=[])
+        log_end(success=False, steps=0, score=DEFAULT_STRICT_SCORE, rewards=[])
     finally:
         successful_tasks = sum(1 for item in task_results if item["success"])
         mean_score = (

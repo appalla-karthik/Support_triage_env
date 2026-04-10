@@ -9,11 +9,12 @@ def test_log_end_includes_task_name(capsys):
     inference.log_end(
         success=True,
         steps=4,
+        score=0.99,
         rewards=[0.44, 0.34, 0.18, -0.01],
     )
 
     captured = capsys.readouterr()
-    assert captured.out.strip() == "[END] success=true steps=4 rewards=0.44,0.34,0.18,-0.01"
+    assert captured.out.strip() == "[END] success=true steps=4 score=0.99 rewards=0.44,0.34,0.18,-0.01"
 
 
 def test_main_emits_structured_stdout_on_bootstrap_failure(monkeypatch):
@@ -31,4 +32,4 @@ def test_main_emits_structured_stdout_on_bootstrap_failure(monkeypatch):
     output = buffer.getvalue()
     assert "[START] task=billing_refund_easy" in output
     assert "[STEP] step=0 action=fatal_error" in output
-    assert "[END] success=false steps=0 rewards=" in output
+    assert "[END] success=false steps=0 score=0.01 rewards=" in output
