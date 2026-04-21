@@ -31,6 +31,7 @@ baseline = "support_triage_env.baseline.run_baseline:main"
 synthetic-dataset = "support_triage_env.synthetic_dataset:main"
 build-training-data = "support_triage_env.training_data:main"
 train-support-classifier = "support_triage_env.train_classifier:main"
+train-and-evaluate-triage = "support_triage_env.train_and_evaluate:main"
 
 [tool.setuptools]
 include-package-data = true

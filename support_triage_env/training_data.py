@@ -11,8 +11,11 @@ from support_triage_env.synthetic_dataset import build_synthetic_dataset
 
 
 TARGET_LABELS = [
+    "billing_approval",
     "billing_refund",
+    "incident_coordination",
     "product_bug",
+    "security_escalation",
     "security_account_takeover",
     "account_access",
 ]
@@ -27,6 +30,12 @@ def infer_support_label(*parts: str) -> str | None:
     if not text:
         return None
 
+    security_escalation_terms = [
+        "trust and safety",
+        "executive",
+        "board member",
+        "urgent security review",
+    ]
     security_terms = [
         "account takeover",
         "fraud",
@@ -40,6 +49,17 @@ def infer_support_label(*parts: str) -> str | None:
         "otp",
         "hacked",
     ]
+    billing_approval_terms = [
+        "approval",
+        "finance close",
+        "month end",
+        "month-end",
+        "high value refund",
+        "large refund",
+        "policy review",
+        "finance review",
+        "reopen",
+    ]
     billing_terms = [
         "refund",
         "charged twice",
@@ -51,6 +71,16 @@ def infer_support_label(*parts: str) -> str | None:
         "chargeback",
         "credit card",
         "dispute",
+    ]
+    incident_coordination_terms = [
+        "incident",
+        "major outage",
+        "sev1",
+        "sev 1",
+        "bridge call",
+        "executive dashboard",
+        "enterprise export",
+        "cross-team",
     ]
     access_terms = [
         "login",
@@ -78,9 +108,19 @@ def infer_support_label(*parts: str) -> str | None:
     ]
 
     if any(term in text for term in security_terms):
+        if any(term in text for term in security_escalation_terms):
+            return "security_escalation"
         return "security_account_takeover"
+    if any(term in text for term in billing_approval_terms) and any(
+        term in text for term in billing_terms
+    ):
+        return "billing_approval"
     if any(term in text for term in billing_terms):
         return "billing_refund"
+    if any(term in text for term in incident_coordination_terms) and any(
+        term in text for term in product_terms
+    ):
+        return "incident_coordination"
     if any(term in text for term in product_terms):
         return "product_bug"
     if any(term in text for term in access_terms):

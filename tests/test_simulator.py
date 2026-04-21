@@ -6,6 +6,7 @@ from support_triage_env.models import (
     SupportTriageAction,
     TicketCategory,
     TicketPriority,
+    TicketStatus,
     TicketTeam,
 )
 from support_triage_env.simulator import SupportTriageSimulator
@@ -165,7 +166,7 @@ def test_enterprise_refund_task_supports_multi_app_investigation():
         SupportTriageAction(
             action_type=ActionType.CLASSIFY_TICKET,
             ticket_id=ticket_id,
-            category=TicketCategory.BILLING_REFUND,
+            category=TicketCategory.BILLING_APPROVAL,
             priority=TicketPriority.HIGH,
             team=TicketTeam.BILLING_OPS,
         )
@@ -253,7 +254,7 @@ def test_incident_coordination_task_rewards_multi_app_outage_workflow():
         SupportTriageAction(
             action_type=ActionType.CLASSIFY_TICKET,
             ticket_id=ticket_id,
-            category=TicketCategory.PRODUCT_BUG,
+            category=TicketCategory.INCIDENT_COORDINATION,
             priority=TicketPriority.HIGH,
             team=TicketTeam.ENGINEERING,
         )
@@ -326,7 +327,7 @@ def test_executive_security_task_supports_safe_trust_escalation():
         SupportTriageAction(
             action_type=ActionType.CLASSIFY_TICKET,
             ticket_id=security_ticket_id,
-            category=TicketCategory.SECURITY_ACCOUNT_TAKEOVER,
+            category=TicketCategory.SECURITY_ESCALATION,
             priority=TicketPriority.URGENT,
             team=TicketTeam.TRUST_SAFETY,
         )
@@ -389,4 +390,166 @@ def test_queue_progression_decrements_unworked_sla_and_adds_queue_penalties():
     )
     assert updated_security_ticket.sla_hours_remaining == security_ticket.sla_hours_remaining - 1
     assert "security_exposure" in env.state().progress.penalties
+
+
+def test_premature_finish_is_penalized_when_work_is_incomplete():
+    env = SupportTriageSimulator()
+    env.reset(task_id="export_outage_medium", seed=7)
+
+    env.step(SupportTriageAction(action_type=ActionType.FINISH))
+
+    assert "premature_finish" in env.state().progress.penalties
+
+
+def test_escalation_rejection_recovery_adds_pending_event_and_bounce_back():
+    env = SupportTriageSimulator()
+    env.reset(task_id="escalation_rejection_recovery", seed=7)
+    ticket = env.state().tickets[0]
+
+    env.step(
+        SupportTriageAction(
+            action_type=ActionType.CLASSIFY_TICKET,
+            ticket_id=ticket.ticket_id,
+            category=TicketCategory.INCIDENT_COORDINATION,
+            priority=TicketPriority.URGENT,
+            team=TicketTeam.ENGINEERING,
+        )
+    )
+    env.step(
+        SupportTriageAction(
+            action_type=ActionType.ESCALATE_TICKET,
+            ticket_id=ticket.ticket_id,
+            team=TicketTeam.ENGINEERING,
+            message="Quick escalation for the export issue.",
+        )
+    )
+
+    assert "pending_downstream_failure" in env.state().progress.penalties
+    assert any(
+        event.event_type == "escalation_rejected" and event.status == "pending"
+        for event in env.state().pending_events
+    )
+
+    env.step(
+        SupportTriageAction(action_type=ActionType.VIEW_TICKET, ticket_id=ticket.ticket_id)
+    )
+
+    updated_ticket = env.state().tickets[0]
+    assert updated_ticket.current_status == TicketStatus.IN_PROGRESS
+    assert any(
+        event.event_type == "escalation_rejected"
+        for event in env.state().recent_events
+    )
+
+
+def test_refund_reopen_review_reopens_after_shortcut_resolution():
+    env = SupportTriageSimulator()
+    env.reset(task_id="refund_reopen_review", seed=7)
+    ticket = env.state().tickets[0]
+
+    env.step(
+        SupportTriageAction(
+            action_type=ActionType.CLASSIFY_TICKET,
+            ticket_id=ticket.ticket_id,
+            category=TicketCategory.BILLING_APPROVAL,
+            priority=TicketPriority.HIGH,
+            team=TicketTeam.BILLING_OPS,
+        )
+    )
+    env.step(
+        SupportTriageAction(
+            action_type=ActionType.RESOLVE_TICKET,
+            ticket_id=ticket.ticket_id,
+            resolution_code=ResolutionCode.REFUND_SUBMITTED,
+        )
+    )
+
+    assert any(
+        event.event_type == "ticket_reopened" and event.status == "pending"
+        for event in env.state().pending_events
+    )
+    env.step(
+        SupportTriageAction(action_type=ActionType.VIEW_TICKET, ticket_id=ticket.ticket_id)
+    )
+    reopened_ticket = env.state().tickets[0]
+    assert reopened_ticket.current_status == TicketStatus.OPEN
+    assert reopened_ticket.resolution_code is None
+    assert any(
+        event.event_type == "ticket_reopened" for event in env.state().recent_events
+    )
+
+
+def test_followup_reprioritization_queue_emits_customer_followup():
+    env = SupportTriageSimulator()
+    env.reset(task_id="followup_reprioritization_queue", seed=7)
+    outage_ticket = next(
+        ticket
+        for ticket in env.state().tickets
+        if "responds-fast" in ticket.tags
+    )
+
+    env.step(
+        SupportTriageAction(
+            action_type=ActionType.REQUEST_INFO,
+            ticket_id=outage_ticket.ticket_id,
+            message="Please share the workspace, browser, and approximate timestamp.",
+        )
+    )
+
+    assert any(
+        event.event_type == "customer_follow_up" and event.status == "pending"
+        for event in env.state().pending_events
+    )
+
+    env.step(
+        SupportTriageAction(action_type=ActionType.VIEW_TICKET, ticket_id=outage_ticket.ticket_id)
+    )
+
+    updated_ticket = next(
+        ticket for ticket in env.state().tickets if ticket.ticket_id == outage_ticket.ticket_id
+    )
+    assert updated_ticket.current_status == TicketStatus.OPEN
+    assert any(
+        event.event_type == "customer_follow_up" for event in env.state().recent_events
+    )
+
+
+def test_mixed_queue_command_center_supports_multi_ticket_progression():
+    env = SupportTriageSimulator()
+    observation = env.reset(task_id="mixed_queue_command_center", seed=7)
+
+    assert len(observation.queue) == 4
+    assert EnterpriseApp.TRUST_SAFETY_CONSOLE in observation.accessible_apps
+    assert EnterpriseApp.INCIDENT_TRACKER in observation.accessible_apps
+
+    security_ticket = next(
+        ticket for ticket in env.state().tickets if "security" in " ".join(ticket.tags).lower()
+    )
+    refund_ticket = next(
+        ticket for ticket in env.state().tickets if "reopen-risk" in ticket.tags
+    )
+
+    env.step(
+        SupportTriageAction(
+            action_type=ActionType.CLASSIFY_TICKET,
+            ticket_id=security_ticket.ticket_id,
+            category=TicketCategory.SECURITY_ACCOUNT_TAKEOVER,
+            priority=TicketPriority.URGENT,
+            team=TicketTeam.TRUST_SAFETY,
+        )
+    )
+
+    assert "security_first" in env.state().progress.components
+
+    env.step(
+        SupportTriageAction(
+            action_type=ActionType.CLASSIFY_TICKET,
+            ticket_id=refund_ticket.ticket_id,
+            category=TicketCategory.BILLING_REFUND,
+            priority=TicketPriority.HIGH,
+            team=TicketTeam.BILLING_OPS,
+        )
+    )
+
+    assert env.state().progress.penalties.get("outage_priority_miss", 0.0) >= 0.08
 

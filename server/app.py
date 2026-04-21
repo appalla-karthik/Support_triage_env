@@ -44,8 +44,8 @@ async def root() -> str:
         --line-strong: rgba(25, 24, 22, 0.15);
         --success: #2f6f55;
         --warning: #9a6730;
-        --shadow: 0 24px 70px rgba(20, 22, 25, 0.08);
-        --shadow-soft: 0 12px 34px rgba(20, 22, 25, 0.05);
+        --shadow: 0 16px 40px rgba(20, 22, 25, 0.06);
+        --shadow-soft: 0 6px 20px rgba(20, 22, 25, 0.04);
       }
       * { box-sizing: border-box; }
       body {
@@ -64,12 +64,11 @@ async def root() -> str:
       }
       .shell {
         position: relative;
-        background: rgba(255, 255, 255, 0.5);
+        background: rgba(255, 255, 255, 0.84);
         border: 1px solid rgba(255, 255, 255, 0.65);
         border-radius: 28px;
         box-shadow: var(--shadow);
         overflow: hidden;
-        backdrop-filter: blur(18px);
       }
       .shell::before {
         content: "";
@@ -111,7 +110,7 @@ async def root() -> str:
         height: 8px;
         border-radius: 50%;
         background: var(--success);
-        box-shadow: 0 0 0 4px rgba(47, 111, 85, 0.12);
+        box-shadow: 0 0 0 3px rgba(47, 111, 85, 0.1);
       }
       h1 {
         margin: 0;
@@ -192,7 +191,7 @@ async def root() -> str:
         color: #f7f5f0;
         display: grid;
         gap: 16px;
-        box-shadow: 0 18px 50px rgba(21, 24, 31, 0.18);
+        box-shadow: 0 12px 30px rgba(21, 24, 31, 0.14);
         align-content: space-between;
       }
       .status-card strong {
@@ -365,7 +364,7 @@ async def root() -> str:
         border-radius: 18px;
         background: rgba(255, 255, 255, 0.92);
         padding: 16px;
-        box-shadow: 0 8px 24px rgba(20, 22, 25, 0.04);
+        box-shadow: 0 4px 14px rgba(20, 22, 25, 0.035);
       }
       .summary-card strong {
         display: block;
@@ -445,23 +444,23 @@ async def root() -> str:
       button {
         font: inherit;
       }
-      select,
-      input,
-      textarea {
+        select,
+        input,
+        textarea {
         width: 100%;
         border: 1px solid rgba(25, 24, 22, 0.12);
         border-radius: 14px;
         padding: 12px 14px;
         background: rgba(255, 255, 255, 0.92);
         color: var(--ink);
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+        box-shadow: none;
       }
       select:focus,
       input:focus,
       textarea:focus {
         outline: none;
         border-color: rgba(35, 45, 59, 0.28);
-        box-shadow: 0 0 0 4px rgba(35, 45, 59, 0.06);
+        box-shadow: 0 0 0 3px rgba(35, 45, 59, 0.05);
       }
       textarea {
         min-height: 214px;
@@ -483,7 +482,7 @@ async def root() -> str:
         cursor: pointer;
         text-decoration: none;
         transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease, background 120ms ease;
-        box-shadow: 0 6px 18px rgba(20, 22, 25, 0.04);
+        box-shadow: 0 3px 10px rgba(20, 22, 25, 0.035);
       }
       button:hover,
       .link-btn:hover {
@@ -495,7 +494,7 @@ async def root() -> str:
         border-color: transparent;
         background: linear-gradient(180deg, #272d35, #1c2128);
         color: white;
-        box-shadow: 0 14px 28px rgba(24, 28, 35, 0.18);
+        box-shadow: 0 10px 22px rgba(24, 28, 35, 0.14);
       }
       .pill {
         min-height: 54px;
@@ -577,7 +576,8 @@ async def root() -> str:
         background: rgba(251, 249, 246, 0.94);
         overflow: hidden;
         min-width: 0;
-        box-shadow: 0 10px 28px rgba(20, 22, 25, 0.04);
+        box-shadow: 0 4px 14px rgba(20, 22, 25, 0.035);
+        contain: layout paint;
       }
       .json-box header {
         display: flex;
@@ -595,8 +595,8 @@ async def root() -> str:
       pre {
         margin: 0;
         padding: 16px;
-        min-height: 220px;
-        max-height: 420px;
+        min-height: 200px;
+        max-height: 360px;
         overflow: auto;
         white-space: pre-wrap;
         overflow-wrap: anywhere;
@@ -604,6 +604,8 @@ async def root() -> str:
         font-size: 12px;
         line-height: 1.65;
         color: #2d3440;
+        contain: content;
+        overscroll-behavior: contain;
       }
       #schema-json {
         min-height: 180px;
@@ -793,6 +795,10 @@ async def root() -> str:
                     <option value="enterprise_refund_investigation">enterprise_refund_investigation</option>
                     <option value="incident_coordination_outage">incident_coordination_outage</option>
                     <option value="executive_security_escalation">executive_security_escalation</option>
+                    <option value="escalation_rejection_recovery">escalation_rejection_recovery</option>
+                    <option value="refund_reopen_review">refund_reopen_review</option>
+                    <option value="mixed_queue_command_center">mixed_queue_command_center</option>
+                    <option value="followup_reprioritization_queue">followup_reprioritization_queue</option>
                   </select>
                 </div>
                 <div class="control-card">
@@ -888,7 +894,7 @@ async def root() -> str:
               <span class="section-kicker">Environment Profile</span>
               <h2>What This Console Covers</h2>
               <div class="chip-row">
-                <span class="chip">6 task families</span>
+                <span class="chip">10 task families</span>
                 <span class="chip">Multi-app workflow</span>
                 <span class="chip">Deterministic graders</span>
                 <span class="chip">Queue-level penalties</span>
@@ -903,6 +909,10 @@ async def root() -> str:
                 <span class="chip">enterprise_refund_investigation</span>
                 <span class="chip">incident_coordination_outage</span>
                 <span class="chip">executive_security_escalation</span>
+                <span class="chip">escalation_rejection_recovery</span>
+                <span class="chip">refund_reopen_review</span>
+                <span class="chip">mixed_queue_command_center</span>
+                <span class="chip">followup_reprioritization_queue</span>
               </div>
             </div>
 
@@ -957,13 +967,22 @@ GET  /schema</div>
       const seedInput = document.getElementById("seed");
       const actionInput = document.getElementById("action-json");
       const serviceMeta = document.getElementById("service-meta");
-      let latestState = null;
-      let latestObservation = null;
-      let latestResult = null;
+        const jsonCache = new WeakMap();
+        let latestState = null;
+        let latestObservation = null;
+        let latestResult = null;
 
-      function pretty(data) {
-        return JSON.stringify(data, null, 2);
-      }
+        function pretty(data) {
+          return JSON.stringify(data, null, 2);
+        }
+
+        function setFormattedContent(element, data) {
+          const text = pretty(data);
+          if (jsonCache.get(element) !== text) {
+            element.textContent = text;
+            jsonCache.set(element, text);
+          }
+        }
 
       function findNestedObject(value, predicate, seen = new WeakSet()) {
         if (!value || typeof value !== "object") {
@@ -1072,7 +1091,7 @@ GET  /schema</div>
         statusText.textContent = text;
       }
 
-      function summarizeQueueHealth(statePayload) {
+        function summarizeQueueHealth(statePayload) {
         const tickets = statePayload && Array.isArray(statePayload.tickets)
           ? statePayload.tickets
           : [];
@@ -1089,8 +1108,128 @@ GET  /schema</div>
           const text = `${ticket.subject || ""} ${(ticket.tags || []).join(" ")}`.toLowerCase();
           return text.includes("security") || text.includes("executive") || text.includes("mfa");
         }).length;
-        return `${active} active / ${nearBreach} near SLA / ${security} security`;
-      }
+          return `${active} active / ${nearBreach} near SLA / ${security} security`;
+        }
+
+        function buildTicketSnapshot(ticket) {
+          return {
+            ticket_id: ticket.ticket_id,
+            subject: ticket.subject,
+            status: ticket.current_status,
+            category: ticket.current_category,
+            priority: ticket.current_priority,
+            team: ticket.assigned_team,
+            sla_hours_remaining: ticket.sla_hours_remaining,
+            customer_sentiment: ticket.customer_sentiment,
+            tags: ticket.tags || [],
+            outbound_messages: Array.isArray(ticket.outbound_messages) ? ticket.outbound_messages.length : 0,
+            internal_notes: Array.isArray(ticket.internal_notes) ? ticket.internal_notes.length : 0,
+            requested_information: Array.isArray(ticket.requested_information) ? ticket.requested_information.length : 0,
+          };
+        }
+
+        function buildAccountSnapshot(account) {
+          return {
+            account_id: account.account_id,
+            customer_name: account.customer_name,
+            customer_tier: account.customer_tier,
+            plan_name: account.plan_name,
+            lifecycle_stage: account.lifecycle_stage,
+            security_flags: account.security_flags || [],
+            open_ticket_ids: account.open_ticket_ids || [],
+          };
+        }
+
+        function buildIncidentSnapshot(incident) {
+          return {
+            incident_id: incident.incident_id,
+            ticket_id: incident.ticket_id,
+            title: incident.title,
+            severity: incident.severity,
+            owning_team: incident.owning_team,
+            status: incident.status,
+          };
+        }
+
+        function buildActionSnapshot(entry) {
+          return {
+            step_number: entry.step_number,
+            action_type: entry.action_type,
+            ticket_id: entry.ticket_id,
+            app: entry.app,
+            target_id: entry.target_id,
+            summary: entry.summary,
+          };
+        }
+
+        function buildStateInspector(statePayload) {
+          if (!statePayload || typeof statePayload !== "object") {
+            return {};
+          }
+          return {
+            episode_id: statePayload.episode_id || null,
+            task_id: statePayload.task_id || null,
+            difficulty: statePayload.difficulty || null,
+            objective: statePayload.objective || "",
+            step_count: statePayload.step_count || 0,
+            max_steps: statePayload.max_steps || 0,
+            focused_ticket_id: statePayload.focused_ticket_id || null,
+            cumulative_reward: statePayload.cumulative_reward || 0,
+            final_score: statePayload.final_score || 0.01,
+            done: Boolean(statePayload.done),
+            progress: statePayload.progress || null,
+            queue: Array.isArray(statePayload.tickets)
+              ? statePayload.tickets.map(buildTicketSnapshot)
+              : [],
+            customer_accounts: Array.isArray(statePayload.customer_accounts)
+              ? statePayload.customer_accounts.map(buildAccountSnapshot)
+              : [],
+            incidents: Array.isArray(statePayload.incidents)
+              ? statePayload.incidents.map(buildIncidentSnapshot)
+              : [],
+            pending_events: statePayload.pending_events || [],
+            recent_events: statePayload.recent_events || [],
+            last_action: Array.isArray(statePayload.action_history) && statePayload.action_history.length
+              ? buildActionSnapshot(statePayload.action_history[statePayload.action_history.length - 1])
+              : null,
+          };
+        }
+
+        function buildResponseInspector(payload) {
+          if (!payload || typeof payload !== "object") {
+            return payload;
+          }
+          const observationPayload = extractObservationPayload(payload);
+          const compact = {
+            reward: payload.reward,
+            done: payload.done,
+            info: payload.info,
+            observation: observationPayload
+              ? {
+                  task: observationPayload.task,
+                  objective: observationPayload.objective,
+                  progress: observationPayload.progress || null,
+                  queue_size: Array.isArray(observationPayload.queue) ? observationPayload.queue.length : 0,
+                  accessible_apps: observationPayload.accessible_apps || [],
+                  recent_events: observationPayload.recent_events || [],
+                  last_tool_result: observationPayload.last_tool_result || null,
+                }
+              : null,
+          };
+          return Object.fromEntries(
+            Object.entries(compact).filter(([, value]) => value !== undefined && value !== null)
+          );
+        }
+
+        function renderStatePanel(statePayload) {
+          stateKind.textContent = "state";
+          setFormattedContent(stateJson, buildStateInspector(statePayload));
+        }
+
+        function renderResponsePanel(payload, kind) {
+          responseKind.textContent = kind;
+          setFormattedContent(responseJson, buildResponseInspector(payload));
+        }
 
       function renderWorldPanels(observationPayload, statePayload) {
         const appSnapshots = observationPayload && Array.isArray(observationPayload.app_snapshots)
@@ -1112,15 +1251,15 @@ GET  /schema</div>
             ? statePayload.accessible_apps
             : [];
 
-        appsText.textContent = String(accessibleApps.length);
-        queueHealthText.textContent = summarizeQueueHealth(statePayload || buildStateFromObservation(observationPayload));
-        appsKind.textContent = "apps";
-        worldKind.textContent = "world";
-        toolKind.textContent = "tool";
-        appsJson.textContent = pretty(appSnapshots);
-        worldJson.textContent = pretty(worldSummary);
-        toolJson.textContent = pretty(lastToolResult);
-      }
+          appsText.textContent = String(accessibleApps.length);
+          queueHealthText.textContent = summarizeQueueHealth(statePayload || buildStateFromObservation(observationPayload));
+          appsKind.textContent = "apps";
+          worldKind.textContent = "world";
+          toolKind.textContent = "tool";
+          setFormattedContent(appsJson, appSnapshots);
+          setFormattedContent(worldJson, worldSummary);
+          setFormattedContent(toolJson, lastToolResult);
+        }
 
       function updateSummary(payload, statePayload) {
         const observationPayload = extractObservationPayload(payload);
@@ -1149,12 +1288,12 @@ GET  /schema</div>
         serviceMeta.textContent = `${payload.name} v${payload.version || "?"}`;
       }
 
-      async function loadSchema() {
-        schemaKind.textContent = "schema";
-        const response = await fetch("/schema");
-        const payload = await response.json();
-        schemaJson.textContent = pretty(payload);
-      }
+        async function loadSchema() {
+          schemaKind.textContent = "schema";
+          const response = await fetch("/schema");
+          const payload = await response.json();
+          setFormattedContent(schemaJson, payload);
+        }
 
       function inferCategory(ticket) {
         const subject = (ticket.subject || "").toLowerCase();
@@ -1162,18 +1301,23 @@ GET  /schema</div>
           .map((message) => message.content || "")
           .join(" ")
           .toLowerCase();
-        const combined = `${subject} ${latestMessage} ${((ticket.tags || []).join(" ")).toLowerCase()}`;
+        const tagText = ((ticket.tags || []).join(" ")).toLowerCase();
+        const combined = `${subject} ${latestMessage} ${tagText}`;
         if (combined.includes("mfa") || combined.includes("2fa") || combined.includes("compromised") || combined.includes("recovery") || combined.includes("one-time code") || combined.includes("suspicious activity") || combined.includes("ceo")) {
           return {
-            category: "security_account_takeover",
+            category: combined.includes("trust and safety") || tagText.includes("executive") || tagText.includes("trust")
+              ? "security_escalation"
+              : "security_account_takeover",
             priority: "urgent",
             team: "trust_safety"
           };
         }
         if (combined.includes("refund") || combined.includes("duplicate charge") || combined.includes("charged twice") || combined.includes("invoice") || combined.includes("extra charge") || combined.includes("billed twice")) {
           return {
-            category: "billing_refund",
-            priority: combined.includes("enterprise") || combined.includes("month-end") || combined.includes("vip")
+            category: combined.includes("approval") || combined.includes("month-end") || tagText.includes("reopen-risk") || tagText.includes("policy-review") || tagText.includes("vip")
+              ? "billing_approval"
+              : "billing_refund",
+            priority: combined.includes("enterprise") || combined.includes("month-end") || combined.includes("vip") || combined.includes("approval")
               ? "high"
               : "medium",
             team: "billing_ops"
@@ -1181,7 +1325,9 @@ GET  /schema</div>
         }
         if (combined.includes("export") || combined.includes("csv") || combined.includes("xlsx") || combined.includes("500 error") || combined.includes("502 error") || combined.includes("server error") || combined.includes("reporting")) {
           return {
-            category: "product_bug",
+            category: combined.includes("incident") || combined.includes("bridge") || tagText.includes("incident") || tagText.includes("incident-follow-up") || tagText.includes("escalation-review")
+              ? "incident_coordination"
+              : "product_bug",
             priority: "high",
             team: "engineering"
           };
@@ -1197,17 +1343,23 @@ GET  /schema</div>
         if (defaults.category === "billing_refund") {
           return "I am sorry for the duplicate charge. I have started the refund for the extra payment, and you should see it within 5-7 business days.";
         }
+        if (defaults.category === "billing_approval") {
+          return "I am sorry for the billing disruption. I reviewed the account context and started the refund approval workflow with billing. We will keep you updated as the review completes, and approved refunds typically land within 5-7 business days.";
+        }
+        if (defaults.category === "incident_coordination") {
+          return "I am sorry this is blocking your work. I have created an incident and escalated this issue to engineering for investigation. Please share the affected workspace, approximate timestamp, and browser details to help us triage faster.";
+        }
         if (defaults.category === "product_bug") {
           return "I am sorry this is blocking your work. I have opened an incident and escalated this issue to engineering for investigation. Please share the affected workspace, approximate timestamp, and browser details to help us triage faster.";
         }
-        if (defaults.category === "security_account_takeover") {
+        if (defaults.category === "security_account_takeover" || defaults.category === "security_escalation") {
           return "I am sorry you are dealing with this. I have escalated this to our security team and Trust and Safety specialists. Please do not share passwords or one-time codes. Keep MFA enabled and use the secure recovery flow or password reset link to regain access.";
         }
         return "I am sorry you are having trouble accessing the account. Please use the secure password reset flow, and let us know if access is still blocked afterward.";
       }
 
       function defaultEscalation(ticket, defaults) {
-        if (defaults.category === "security_account_takeover") {
+        if (defaults.category === "security_account_takeover" || defaults.category === "security_escalation") {
           return `Escalating ${ticket.ticket_id} to Trust and Safety for urgent account-takeover review. Subject: ${ticket.subject}. Keep MFA enabled and use secure recovery steps only.`;
         }
         return `Escalating ${ticket.ticket_id} for specialist review. Subject: ${ticket.subject}. Include workspace, impact summary, browser, and timestamp in the incident context.`;
@@ -1300,6 +1452,166 @@ GET  /schema</div>
           }
         }
 
+        if (taskId === "escalation_rejection_recovery") {
+          if (!hasActionBeenTaken("lookup_account", ticket.ticket_id)) {
+            return {
+              action_type: "lookup_account",
+              ticket_id: ticket.ticket_id,
+              app: "crm_workspace"
+            };
+          }
+          if (!hasActionBeenTaken("search_policy", ticket.ticket_id)) {
+            return {
+              action_type: "search_policy",
+              ticket_id: ticket.ticket_id,
+              app: "policy_hub",
+              message: "escalation packet review policy"
+            };
+          }
+          if (!hasActionBeenTaken("create_incident", ticket.ticket_id)) {
+            return {
+              action_type: "create_incident",
+              ticket_id: ticket.ticket_id,
+              app: "incident_tracker",
+              team: "engineering",
+              severity: "high",
+              message: `Escalation recovery incident for ${ticket.ticket_id}: ${ticket.subject}`
+            };
+          }
+        }
+
+        if (taskId === "refund_reopen_review") {
+          if (!hasActionBeenTaken("lookup_account", ticket.ticket_id)) {
+            return {
+              action_type: "lookup_account",
+              ticket_id: ticket.ticket_id,
+              app: "crm_workspace"
+            };
+          }
+          if (!hasActionBeenTaken("check_billing_status", ticket.ticket_id)) {
+            return {
+              action_type: "check_billing_status",
+              ticket_id: ticket.ticket_id,
+              app: "billing_system"
+            };
+          }
+          if (!hasActionBeenTaken("search_policy", ticket.ticket_id)) {
+            return {
+              action_type: "search_policy",
+              ticket_id: ticket.ticket_id,
+              app: "policy_hub",
+              message: "enterprise refund approval thresholds"
+            };
+          }
+        }
+
+        if (taskId === "mixed_queue_command_center") {
+          if ((ticket.tags || []).includes("reopen-risk")) {
+            if (!hasActionBeenTaken("lookup_account", ticket.ticket_id)) {
+              return {
+                action_type: "lookup_account",
+                ticket_id: ticket.ticket_id,
+                app: "crm_workspace"
+              };
+            }
+            if (!hasActionBeenTaken("check_billing_status", ticket.ticket_id)) {
+              return {
+                action_type: "check_billing_status",
+                ticket_id: ticket.ticket_id,
+                app: "billing_system"
+              };
+            }
+            if (!hasActionBeenTaken("search_policy", ticket.ticket_id)) {
+              return {
+                action_type: "search_policy",
+                ticket_id: ticket.ticket_id,
+                app: "policy_hub",
+                message: "enterprise refund approval thresholds"
+              };
+            }
+          }
+          if ((ticket.tags || []).includes("incident") || (ticket.tags || []).includes("incident-follow-up")) {
+            if (!hasActionBeenTaken("lookup_account", ticket.ticket_id)) {
+              return {
+                action_type: "lookup_account",
+                ticket_id: ticket.ticket_id,
+                app: "crm_workspace"
+              };
+            }
+            if (!hasActionBeenTaken("search_policy", ticket.ticket_id)) {
+              return {
+                action_type: "search_policy",
+                ticket_id: ticket.ticket_id,
+                app: "policy_hub",
+                message: "product outage escalation checklist"
+              };
+            }
+            if (!hasActionBeenTaken("create_incident", ticket.ticket_id)) {
+              return {
+                action_type: "create_incident",
+                ticket_id: ticket.ticket_id,
+                app: "incident_tracker",
+                team: "engineering",
+                severity: "high",
+                message: `Mixed queue incident for ${ticket.ticket_id}: ${ticket.subject}`
+              };
+            }
+          }
+          if ((ticket.tags || []).includes("trust") || (ticket.tags || []).includes("executive")) {
+            if (!hasActionBeenTaken("lookup_account", ticket.ticket_id)) {
+              return {
+                action_type: "lookup_account",
+                ticket_id: ticket.ticket_id,
+                app: "crm_workspace"
+              };
+            }
+            if (!hasActionBeenTaken("search_policy", ticket.ticket_id)) {
+              return {
+                action_type: "search_policy",
+                ticket_id: ticket.ticket_id,
+                app: "policy_hub",
+                message: "account takeover response policy"
+              };
+            }
+            if (!hasActionBeenTaken("add_internal_note", ticket.ticket_id)) {
+              return {
+                action_type: "add_internal_note",
+                ticket_id: ticket.ticket_id,
+                app: "trust_safety_console",
+                message: "Mixed queue trust escalation note captured."
+              };
+            }
+          }
+        }
+
+        if (taskId === "followup_reprioritization_queue") {
+          if ((ticket.tags || []).includes("responds-fast") && !hasActionBeenTaken("request_info", ticket.ticket_id)) {
+            return {
+              action_type: "request_info",
+              ticket_id: ticket.ticket_id,
+              message: "Please share the workspace, browser, and approximate timestamp so we can investigate the outage."
+            };
+          }
+          if ((ticket.tags || []).includes("responds-fast") && !hasActionBeenTaken("create_incident", ticket.ticket_id) && hasActionBeenTaken("request_info", ticket.ticket_id)) {
+            if (!hasActionBeenTaken("search_policy", ticket.ticket_id)) {
+              return {
+                action_type: "search_policy",
+                ticket_id: ticket.ticket_id,
+                app: "policy_hub",
+                message: "product outage escalation checklist"
+              };
+            }
+            return {
+              action_type: "create_incident",
+              ticket_id: ticket.ticket_id,
+              app: "incident_tracker",
+              team: "engineering",
+              severity: "high",
+              message: `Follow-up outage incident for ${ticket.ticket_id}: ${ticket.subject}`
+            };
+          }
+        }
+
         return null;
       }
 
@@ -1339,7 +1651,7 @@ GET  /schema</div>
             return;
           }
 
-          if (defaults.category === "billing_refund") {
+          if (defaults.category === "billing_refund" || defaults.category === "billing_approval") {
             if (!ticket.outbound_messages || ticket.outbound_messages.length === 0) {
               actionInput.value = pretty({
                 action_type: "draft_reply",
@@ -1359,7 +1671,7 @@ GET  /schema</div>
             continue;
           }
 
-          if (defaults.category === "product_bug" || defaults.category === "security_account_takeover") {
+          if (defaults.category === "product_bug" || defaults.category === "incident_coordination" || defaults.category === "security_account_takeover" || defaults.category === "security_escalation") {
             if (!ticket.outbound_messages || ticket.outbound_messages.length === 0) {
               actionInput.value = pretty({
                 action_type: "draft_reply",
@@ -1385,18 +1697,17 @@ GET  /schema</div>
         setStatus("Suggested next action generated.");
       }
 
-      async function refreshState() {
-        const response = await fetch("/state");
-        const payload = await response.json();
-        const parsedState = extractStatePayload(payload);
-        latestState = parsedState
-          ? { ...(latestState || {}), ...parsedState }
-          : latestState;
-        stateKind.textContent = "state";
-        stateJson.textContent = pretty(payload);
-        updateSummary(latestResult, latestState);
-        return payload;
-      }
+        async function refreshState() {
+          const response = await fetch("/state");
+          const payload = await response.json();
+          const parsedState = extractStatePayload(payload);
+          latestState = parsedState
+            ? { ...(latestState || {}), ...parsedState }
+            : latestState;
+          renderStatePanel(latestState || payload);
+          updateSummary(latestResult, latestState);
+          return payload;
+        }
 
       async function doReset() {
         setStatus("Resetting episode...");
@@ -1411,35 +1722,37 @@ GET  /schema</div>
         });
         const payload = await response.json();
         latestObservation = extractObservationPayload(payload);
-        latestState =
-          extractStatePayload(payload) ||
-          buildStateFromObservation(latestObservation) ||
-          latestState;
-        latestResult = payload;
-        responseKind.textContent = "reset";
-        responseJson.textContent = pretty(payload);
-        try {
-          await refreshState();
-        } catch (error) {
-          stateKind.textContent = "state-error";
-          stateJson.textContent = pretty({ error: "State fetch failed", detail: String(error) });
+          latestState =
+            extractStatePayload(payload) ||
+            buildStateFromObservation(latestObservation) ||
+            latestState;
+          latestResult = payload;
+          renderResponsePanel(payload, "reset");
+          renderStatePanel(latestState);
+          if (!extractStatePayload(payload)) {
+            try {
+              await refreshState();
+            } catch (error) {
+              stateKind.textContent = "state-error";
+              setFormattedContent(stateJson, { error: "State fetch failed", detail: String(error) });
+            }
+          }
+          updateSummary(payload, latestState);
+          setStatus(response.ok ? "Episode reset successfully" : "Reset failed");
+          buildSuggestedActionFromState();
         }
-        updateSummary(payload, latestState);
-        setStatus(response.ok ? "Episode reset successfully" : "Reset failed");
-        buildSuggestedActionFromState();
-      }
 
       async function doStep() {
         setStatus("Sending action...");
         let action;
         try {
           action = JSON.parse(actionInput.value);
-        } catch (error) {
-          setStatus("Action JSON is invalid");
-          responseKind.textContent = "client-error";
-          responseJson.textContent = pretty({ error: "Invalid JSON", detail: String(error) });
-          return;
-        }
+          } catch (error) {
+            setStatus("Action JSON is invalid");
+            responseKind.textContent = "client-error";
+            setFormattedContent(responseJson, { error: "Invalid JSON", detail: String(error) });
+            return;
+          }
         const response = await fetch("/step", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -1447,31 +1760,32 @@ GET  /schema</div>
         });
         const payload = await response.json();
         latestObservation = extractObservationPayload(payload);
-        latestState =
-          extractStatePayload(payload) ||
-          buildStateFromObservation(latestObservation) ||
-          latestState;
-        latestResult = payload;
-        responseKind.textContent = "step";
-        responseJson.textContent = pretty(payload);
-        try {
-          await refreshState();
-        } catch (error) {
-          stateKind.textContent = "state-error";
-          stateJson.textContent = pretty({ error: "State fetch failed", detail: String(error) });
+          latestState =
+            extractStatePayload(payload) ||
+            buildStateFromObservation(latestObservation) ||
+            latestState;
+          latestResult = payload;
+          renderResponsePanel(payload, "step");
+          renderStatePanel(latestState);
+          if (!extractStatePayload(payload)) {
+            try {
+              await refreshState();
+            } catch (error) {
+              stateKind.textContent = "state-error";
+              setFormattedContent(stateJson, { error: "State fetch failed", detail: String(error) });
+            }
+          }
+          updateSummary(payload, latestState);
+          setStatus(response.ok ? "Action executed" : "Step request failed");
+          buildSuggestedActionFromState();
         }
-        updateSummary(payload, latestState);
-        setStatus(response.ok ? "Action executed" : "Step request failed");
-        buildSuggestedActionFromState();
-      }
 
-      async function getState() {
-        setStatus("Fetching current state...");
-        const payload = await refreshState();
-        responseKind.textContent = "state";
-        responseJson.textContent = pretty(payload);
-        setStatus("State loaded");
-      }
+        async function getState() {
+          setStatus("Fetching current state...");
+          const payload = await refreshState();
+          renderResponsePanel(payload, "state");
+          setStatus("State loaded");
+        }
 
       function fillSample() {
         const samples = {
@@ -1514,6 +1828,29 @@ GET  /schema</div>
             ticket_id: "TCK-0000",
             app: "trust_safety_console",
             message: "Executive account with takeover indicators. Escalate to trust immediately."
+          },
+          escalation_rejection_recovery: {
+            action_type: "create_incident",
+            ticket_id: "TCK-0000",
+            app: "incident_tracker",
+            team: "engineering",
+            severity: "high",
+            message: "Escalation recovery incident with full repro context."
+          },
+          refund_reopen_review: {
+            action_type: "check_billing_status",
+            ticket_id: "TCK-0000",
+            app: "billing_system"
+          },
+          mixed_queue_command_center: {
+            action_type: "lookup_account",
+            ticket_id: "TCK-0000",
+            app: "crm_workspace"
+          },
+          followup_reprioritization_queue: {
+            action_type: "request_info",
+            ticket_id: "TCK-0000",
+            message: "Please share the workspace, browser, and approximate timestamp so we can investigate the outage."
           }
         };
         actionInput.value = pretty(samples[taskInput.value]);
@@ -1530,15 +1867,15 @@ GET  /schema</div>
       });
 
       fillSample();
-      loadMetadata().catch((error) => {
-        serviceMeta.textContent = "Metadata unavailable";
-        responseKind.textContent = "error";
-        responseJson.textContent = pretty({ error: "Metadata fetch failed", detail: String(error) });
-      });
-      loadSchema().catch((error) => {
-        schemaKind.textContent = "error";
-        schemaJson.textContent = pretty({ error: "Schema fetch failed", detail: String(error) });
-      });
+        loadMetadata().catch((error) => {
+          serviceMeta.textContent = "Metadata unavailable";
+          responseKind.textContent = "error";
+          setFormattedContent(responseJson, { error: "Metadata fetch failed", detail: String(error) });
+        });
+        loadSchema().catch((error) => {
+          schemaKind.textContent = "error";
+          setFormattedContent(schemaJson, { error: "Schema fetch failed", detail: String(error) });
+        });
       refreshState().catch(() => {});
     </script>
   </body>

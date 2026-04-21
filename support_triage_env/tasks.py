@@ -59,6 +59,10 @@ TASK_IDS = [
     "enterprise_refund_investigation",
     "incident_coordination_outage",
     "executive_security_escalation",
+    "escalation_rejection_recovery",
+    "refund_reopen_review",
+    "mixed_queue_command_center",
+    "followup_reprioritization_queue",
 ]
 
 
@@ -116,6 +120,17 @@ def _standard_policy_articles() -> list[PolicyArticle]:
             tags=["engineering", "outage", "escalation"],
         ),
         PolicyArticle(
+            article_id="POL-ENG-004",
+            title="Escalation packet review policy",
+            summary="Escalations can be rejected if the packet is missing an incident link or reproducibility details.",
+            content=(
+                "Before sending an outage escalation, create or link an incident, capture the affected "
+                "workspace, and include timing plus browser context. Escalations missing these fields may "
+                "be rejected back to support for revision."
+            ),
+            tags=["engineering", "escalation packet", "incident review"],
+        ),
+        PolicyArticle(
             article_id="POL-SEC-003",
             title="Account takeover response policy",
             summary="Security incidents must be escalated urgently without asking for secrets.",
@@ -124,6 +139,17 @@ def _standard_policy_articles() -> list[PolicyArticle]:
                 "or one-time codes, and never disable MFA by email."
             ),
             tags=["security", "trust", "mfa"],
+        ),
+        PolicyArticle(
+            article_id="POL-REFUND-005",
+            title="Enterprise refund approval thresholds",
+            summary="Large enterprise refunds require billing review and a current policy check before resolution.",
+            content=(
+                "When a refund is over the approval threshold or month-end close is affected, review the "
+                "billing ledger and current policy article before resolving. Refunds resolved without this "
+                "review can be reopened for finance approval."
+            ),
+            tags=["refund", "approval", "finance review", "policy drift"],
         ),
     ]
 
@@ -622,7 +648,7 @@ def _enterprise_refund_investigation_scenario(rng: random.Random) -> TaskScenari
     )
     expectation = TicketExpectation(
         ticket_id=ticket_id,
-        category=TicketCategory.BILLING_REFUND,
+        category=TicketCategory.BILLING_APPROVAL,
         priority=TicketPriority.HIGH,
         team=TicketTeam.BILLING_OPS,
         terminal_status="resolved",
@@ -644,6 +670,7 @@ def _enterprise_refund_investigation_scenario(rng: random.Random) -> TaskScenari
                 "and policy hub before routing, replying, and resolving the case."
             ),
             max_steps=12,
+            step_penalty=0.012,
         ),
         instructions=[
             "Use the available apps to confirm the account and billing context before finishing the workflow.",
@@ -721,7 +748,7 @@ def _incident_coordination_outage_scenario(rng: random.Random) -> TaskScenario:
     )
     expectation = TicketExpectation(
         ticket_id=ticket_id,
-        category=TicketCategory.PRODUCT_BUG,
+        category=TicketCategory.INCIDENT_COORDINATION,
         priority=TicketPriority.HIGH,
         team=TicketTeam.ENGINEERING,
         terminal_status="escalated",
@@ -743,6 +770,7 @@ def _incident_coordination_outage_scenario(rng: random.Random) -> TaskScenario:
                 "The agent should create an incident, route the case correctly, communicate safely, and avoid SLA breach."
             ),
             max_steps=12,
+            step_penalty=0.013,
         ),
         instructions=[
             "Investigate the account, create an incident, and then escalate to engineering with context.",
@@ -851,7 +879,7 @@ def _executive_security_escalation_scenario(rng: random.Random) -> TaskScenario:
     expectations = {
         security_ticket_id: TicketExpectation(
             ticket_id=security_ticket_id,
-            category=TicketCategory.SECURITY_ACCOUNT_TAKEOVER,
+            category=TicketCategory.SECURITY_ESCALATION,
             priority=TicketPriority.URGENT,
             team=TicketTeam.TRUST_SAFETY,
             terminal_status="escalated",
@@ -874,6 +902,7 @@ def _executive_security_escalation_scenario(rng: random.Random) -> TaskScenario:
                 "add an internal trust note, and escalate safely without unsafe recovery guidance."
             ),
             max_steps=12,
+            step_penalty=0.013,
         ),
         instructions=[
             "Urgent executive security exposure outranks routine account access requests.",
@@ -934,6 +963,636 @@ def _executive_security_escalation_scenario(rng: random.Random) -> TaskScenario:
     )
 
 
+def _escalation_rejection_recovery_scenario(rng: random.Random) -> TaskScenario:
+    ticket_id = _ticket_id(rng)
+    account_id = _account_id(rng)
+    billing_account_id = _billing_account_id(rng)
+    workspace_id = _workspace_id(rng)
+    customer_name = rng.choice(
+        ["Nadia Brooks", "Samar Gupta", "Ethan Mercer", "Lina Costa"]
+    )
+    error_code = rng.choice(["500 error", "502 error", "server error"])
+    impact_phrase = rng.choice(
+        ["finance close", "quarter-end reporting", "compliance export deadline"]
+    )
+    browser_phrase = rng.choice(["Chrome 124", "Edge 123", "Firefox ESR"])
+    time_reference = rng.choice(["08:14 UTC", "11:32 UTC", "14:05 UTC"])
+    customer_message = (
+        f"Our reporting workspace {workspace_id} throws a {error_code} on every export in {browser_phrase}. "
+        f"This started at {time_reference} and is blocking {impact_phrase}. Please escalate this quickly."
+    )
+
+    ticket = TicketRecord(
+        ticket_id=ticket_id,
+        customer_name=customer_name,
+        customer_tier="enterprise",
+        account_id=account_id,
+        billing_account_id=billing_account_id,
+        workspace_id=workspace_id,
+        subject=f"Escalation packet keeps bouncing for export outage ({error_code})",
+        messages=[TicketMessage(role="customer", content=customer_message)],
+        sla_hours_remaining=3,
+        tags=["outage", "incident", "engineering", "escalation-review", "requires-repro"],
+    )
+    expectation = TicketExpectation(
+        ticket_id=ticket_id,
+        category=TicketCategory.INCIDENT_COORDINATION,
+        priority=TicketPriority.URGENT,
+        team=TicketTeam.ENGINEERING,
+        terminal_status="escalated",
+        reply_requirements=[
+            ReplyRequirement(label="impact acknowledgement", phrases=["sorry", "blocking", "urgent"]),
+            ReplyRequirement(label="incident notice", phrases=["incident", "engineering", "investigating"]),
+            ReplyRequirement(label="repro details", phrases=["workspace", "timestamp", "browser"]),
+        ],
+        forbidden_phrases=["guarantee", "fixed today", "definitely resolved"],
+        escalation_phrase_requirements=[workspace_id, error_code, browser_phrase, time_reference],
+    )
+    return TaskScenario(
+        card=TaskCard(
+            task_id="escalation_rejection_recovery",
+            title="Escalation Rejection Recovery",
+            difficulty="hard",
+            objective=(
+                "Recover from a rejected escalation packet by collecting the missing incident and "
+                "repro context, then re-escalate the outage successfully."
+            ),
+            max_steps=14,
+            step_penalty=0.014,
+        ),
+        instructions=[
+            "This environment can reject incomplete escalation packets and send them back to support.",
+            "Use CRM, policy, and incident tools before sending the final engineering escalation.",
+        ],
+        policy_hints=[
+            "Escalation packets without incident links or reproducibility details may be rejected.",
+            "The final escalation should include workspace, error code, browser, and timing context.",
+        ],
+        accessible_apps=[
+            EnterpriseApp.TICKETING_CONSOLE,
+            EnterpriseApp.CRM_WORKSPACE,
+            EnterpriseApp.INCIDENT_TRACKER,
+            EnterpriseApp.POLICY_HUB,
+        ],
+        tickets=[ticket],
+        customer_accounts=[
+            CustomerAccountRecord(
+                account_id=account_id,
+                workspace_id=workspace_id,
+                customer_name=customer_name,
+                customer_tier="enterprise",
+                plan_name="Enterprise",
+                lifecycle_stage="at_risk",
+                support_history=["The customer already had one prior escalation rejected for missing packet fields."],
+                open_ticket_ids=[ticket_id],
+            )
+        ],
+        billing_accounts=[
+            BillingAccountRecord(
+                billing_account_id=billing_account_id,
+                account_id=account_id,
+                payment_status="paid",
+                refund_eligibility="blocked",
+                ledger_notes=["Billing is healthy; engineering packet quality is the blocker."],
+            )
+        ],
+        policy_articles=_standard_policy_articles(),
+        world_summary=[
+            "An enterprise outage requires a complete escalation packet before engineering will accept it.",
+            "The incident tracker and policy hub should be used to avoid a bounce-back.",
+        ],
+        expectations={ticket_id: expectation},
+    )
+
+
+def _refund_reopen_review_scenario(rng: random.Random) -> TaskScenario:
+    ticket_id = _ticket_id(rng)
+    account_id = _account_id(rng)
+    billing_account_id = _billing_account_id(rng)
+    workspace_id = _workspace_id(rng)
+    invoice_id = _invoice_id(rng)
+    customer_name = rng.choice(
+        ["Claire Morgan", "Aarav Nanda", "Mila Ortega", "Yusuf Karim"]
+    )
+    amount = rng.choice([420.0, 515.0, 640.0])
+    customer_message = (
+        f"Our enterprise workspace {workspace_id} was charged twice on invoice {invoice_id} for ${amount:.0f}. "
+        "Finance says this must be corrected before close. Please resolve the refund today."
+    )
+
+    ticket = TicketRecord(
+        ticket_id=ticket_id,
+        customer_name=customer_name,
+        customer_tier="enterprise",
+        account_id=account_id,
+        billing_account_id=billing_account_id,
+        workspace_id=workspace_id,
+        subject=f"Refund keeps reopening after finance review ({invoice_id})",
+        messages=[TicketMessage(role="customer", content=customer_message)],
+        sla_hours_remaining=5,
+        tags=["billing", "refund", "policy-review", "reopen-risk", "vip"],
+    )
+    expectation = TicketExpectation(
+        ticket_id=ticket_id,
+        category=TicketCategory.BILLING_APPROVAL,
+        priority=TicketPriority.HIGH,
+        team=TicketTeam.BILLING_OPS,
+        terminal_status="resolved",
+        resolution_code=ResolutionCode.REFUND_SUBMITTED,
+        reply_requirements=[
+            ReplyRequirement(label="apology", phrases=["sorry", "apologize"]),
+            ReplyRequirement(label="review acknowledgement", phrases=["reviewed", "billing", "policy"]),
+            ReplyRequirement(label="timeline", phrases=["5-7 business days", "within 7 business days"]),
+        ],
+        forbidden_phrases=["cvv", "full card number", "password"],
+    )
+    return TaskScenario(
+        card=TaskCard(
+            task_id="refund_reopen_review",
+            title="Refund Reopen And Review",
+            difficulty="hard",
+            objective=(
+                "Avoid a refund reopen by checking billing and policy context before resolving a "
+                "high-value enterprise refund."
+            ),
+            max_steps=13,
+            step_penalty=0.013,
+        ),
+        instructions=[
+            "A high-value enterprise refund can reopen if finance approval context is missing.",
+            "Review CRM, billing, and current policy before you resolve the case.",
+        ],
+        policy_hints=[
+            "Large enterprise refunds require both billing review and a current policy check.",
+            "If those checks are skipped, the case can reopen and consume additional SLA budget.",
+        ],
+        accessible_apps=[
+            EnterpriseApp.TICKETING_CONSOLE,
+            EnterpriseApp.CRM_WORKSPACE,
+            EnterpriseApp.BILLING_SYSTEM,
+            EnterpriseApp.POLICY_HUB,
+        ],
+        tickets=[ticket],
+        customer_accounts=[
+            CustomerAccountRecord(
+                account_id=account_id,
+                workspace_id=workspace_id,
+                customer_name=customer_name,
+                customer_tier="enterprise",
+                plan_name="Enterprise",
+                lifecycle_stage="at_risk",
+                support_history=["Finance previously reopened a refund when the approval threshold was skipped."],
+                open_ticket_ids=[ticket_id],
+            )
+        ],
+        billing_accounts=[
+            BillingAccountRecord(
+                billing_account_id=billing_account_id,
+                account_id=account_id,
+                invoice_id=invoice_id,
+                payment_status="pending_review",
+                duplicate_charge_detected=True,
+                refund_eligibility="needs_review",
+                pending_refund_amount_usd=amount,
+                ledger_notes=["Finance approval required under the latest enterprise refund threshold."],
+            )
+        ],
+        policy_articles=_standard_policy_articles(),
+        world_summary=[
+            "A high-value enterprise refund can reopen if the latest policy and billing checks are skipped.",
+            "Billing is waiting on support to confirm the current approval workflow.",
+        ],
+        expectations={ticket_id: expectation},
+    )
+
+
+def _mixed_queue_command_center_scenario(rng: random.Random) -> TaskScenario:
+    security_ticket_id = _ticket_id(rng)
+    outage_ticket_id = _ticket_id(rng)
+    refund_ticket_id = _ticket_id(rng)
+    access_ticket_id = _ticket_id(rng)
+    security_account_id = _account_id(rng)
+    outage_account_id = _account_id(rng)
+    refund_account_id = _account_id(rng)
+    access_account_id = _account_id(rng)
+    security_billing_account_id = _billing_account_id(rng)
+    outage_billing_account_id = _billing_account_id(rng)
+    refund_billing_account_id = _billing_account_id(rng)
+    access_billing_account_id = _billing_account_id(rng)
+    outage_workspace_id = _workspace_id(rng)
+    refund_workspace_id = _workspace_id(rng)
+    invoice_id = _invoice_id(rng)
+    browser_phrase = rng.choice(["Chrome 124", "Edge 123", "Firefox ESR"])
+    time_reference = rng.choice(["08:14 UTC", "11:32 UTC", "14:05 UTC"])
+
+    security_ticket = TicketRecord(
+        ticket_id=security_ticket_id,
+        customer_name=rng.choice(["Aditi Jain", "Marcus Bell", "Elena Stone"]),
+        customer_tier="enterprise",
+        account_id=security_account_id,
+        billing_account_id=security_billing_account_id,
+        subject="Executive account takeover and MFA prompt flood",
+        messages=[
+            TicketMessage(
+                role="customer",
+                content=(
+                    "Our COO's account looks compromised. We saw repeated MFA prompts and a changed recovery "
+                    "email. Please restore access immediately and do not let this spread."
+                ),
+            )
+        ],
+        sla_hours_remaining=1,
+        tags=["security", "executive", "urgent", "trust"],
+    )
+    outage_ticket = TicketRecord(
+        ticket_id=outage_ticket_id,
+        customer_name=rng.choice(["Leena Iyer", "Jordan Price", "Nadia Brooks"]),
+        customer_tier="enterprise",
+        account_id=outage_account_id,
+        billing_account_id=outage_billing_account_id,
+        workspace_id=outage_workspace_id,
+        subject="Quarter-end export outage affecting leadership reporting",
+        messages=[
+            TicketMessage(
+                role="customer",
+                content=(
+                    f"Workspace {outage_workspace_id} returns a 500 error on each export in {browser_phrase}. "
+                    f"This started around {time_reference} and is blocking quarter-end reporting."
+                ),
+            )
+        ],
+        sla_hours_remaining=3,
+        tags=["outage", "incident", "engineering", "incident-follow-up"],
+    )
+    refund_ticket = TicketRecord(
+        ticket_id=refund_ticket_id,
+        customer_name=rng.choice(["Claire Morgan", "Rohan Patel", "Mila Novak"]),
+        customer_tier="enterprise",
+        account_id=refund_account_id,
+        billing_account_id=refund_billing_account_id,
+        workspace_id=refund_workspace_id,
+        subject=f"Month-end duplicate charge review for {invoice_id}",
+        messages=[
+            TicketMessage(
+                role="customer",
+                content=(
+                    f"We were charged twice on invoice {invoice_id} for workspace {refund_workspace_id}. "
+                    "Finance needs this corrected before close."
+                ),
+            )
+        ],
+        sla_hours_remaining=6,
+        tags=["billing", "refund", "reopen-risk", "vip", "policy-review"],
+    )
+    access_ticket = TicketRecord(
+        ticket_id=access_ticket_id,
+        customer_name=rng.choice(["Owen Clark", "Sana Noor", "Mateo Ruiz"]),
+        customer_tier="standard",
+        account_id=access_account_id,
+        billing_account_id=access_billing_account_id,
+        subject="Unable to sign in after password reset",
+        messages=[
+            TicketMessage(
+                role="customer",
+                content="I still cannot log in after a password reset. Please help when you can.",
+            )
+        ],
+        sla_hours_remaining=36,
+        tags=["access", "routine"],
+    )
+    tickets = [security_ticket, outage_ticket, refund_ticket, access_ticket]
+    rng.shuffle(tickets)
+
+    expectations = {
+        security_ticket_id: TicketExpectation(
+            ticket_id=security_ticket_id,
+            category=TicketCategory.SECURITY_ACCOUNT_TAKEOVER,
+            priority=TicketPriority.URGENT,
+            team=TicketTeam.TRUST_SAFETY,
+            terminal_status="escalated",
+            reply_requirements=[
+                ReplyRequirement(label="security escalation", phrases=["trust and safety", "security team", "specialist"]),
+                ReplyRequirement(label="do not share secrets", phrases=["do not share", "never share", "don't share"]),
+                ReplyRequirement(label="secure recovery", phrases=["secure recovery", "reset password", "recovery link"]),
+            ],
+            forbidden_phrases=["disable mfa", "disable 2fa", "send us the code", "send us your password"],
+            escalation_phrase_requirements=["mfa", "recovery", "access"],
+        ),
+        outage_ticket_id: TicketExpectation(
+            ticket_id=outage_ticket_id,
+            category=TicketCategory.PRODUCT_BUG,
+            priority=TicketPriority.HIGH,
+            team=TicketTeam.ENGINEERING,
+            terminal_status="escalated",
+            reply_requirements=[
+                ReplyRequirement(label="impact acknowledgement", phrases=["sorry", "blocking", "urgent"]),
+                ReplyRequirement(label="incident notice", phrases=["incident", "engineering", "investigating"]),
+                ReplyRequirement(label="repro details", phrases=["workspace", "timestamp", "browser"]),
+            ],
+            forbidden_phrases=["guarantee", "fixed today", "definitely resolved"],
+            escalation_phrase_requirements=[outage_workspace_id, browser_phrase, time_reference],
+        ),
+        refund_ticket_id: TicketExpectation(
+            ticket_id=refund_ticket_id,
+            category=TicketCategory.BILLING_REFUND,
+            priority=TicketPriority.HIGH,
+            team=TicketTeam.BILLING_OPS,
+            terminal_status="resolved",
+            resolution_code=ResolutionCode.REFUND_SUBMITTED,
+            reply_requirements=[
+                ReplyRequirement(label="apology", phrases=["sorry", "apologize"]),
+                ReplyRequirement(label="review acknowledgement", phrases=["reviewed", "billing", "duplicate charge"]),
+                ReplyRequirement(label="timeline", phrases=["5-7 business days", "within 7 business days"]),
+            ],
+            forbidden_phrases=["cvv", "full card number", "password"],
+        ),
+    }
+
+    return TaskScenario(
+        card=TaskCard(
+            task_id="mixed_queue_command_center",
+            title="Mixed Queue Command Center",
+            difficulty="hard",
+            objective=(
+                "Manage a four-ticket queue with urgent security, active outage, high-value refund, and routine access work. "
+                "Prioritize correctly and complete the specialist workflows without triggering downstream failures."
+            ),
+            max_steps=20,
+            step_penalty=0.014,
+        ),
+        instructions=[
+            "Security must be handled first, followed by the live outage, then the high-value refund.",
+            "The routine access ticket is lower priority and should not crowd out specialist workflows.",
+        ],
+        policy_hints=[
+            "Executive security incidents require trust escalation and safe recovery guidance.",
+            "Enterprise outages should create an incident before engineering escalation.",
+            "High-value refunds can reopen if billing and policy review are skipped.",
+        ],
+        accessible_apps=[
+            EnterpriseApp.TICKETING_CONSOLE,
+            EnterpriseApp.CRM_WORKSPACE,
+            EnterpriseApp.BILLING_SYSTEM,
+            EnterpriseApp.INCIDENT_TRACKER,
+            EnterpriseApp.TRUST_SAFETY_CONSOLE,
+            EnterpriseApp.POLICY_HUB,
+        ],
+        tickets=tickets,
+        customer_accounts=[
+            CustomerAccountRecord(
+                account_id=security_account_id,
+                customer_name=security_ticket.customer_name,
+                customer_tier="enterprise",
+                plan_name="Enterprise",
+                lifecycle_stage="security_hold",
+                security_flags=["unexpected MFA prompts", "recovery email changed"],
+                support_history=["Executive security exposure under trust review."],
+                open_ticket_ids=[security_ticket_id],
+            ),
+            CustomerAccountRecord(
+                account_id=outage_account_id,
+                workspace_id=outage_workspace_id,
+                customer_name=outage_ticket.customer_name,
+                customer_tier="enterprise",
+                plan_name="Enterprise",
+                lifecycle_stage="at_risk",
+                support_history=["Reporting workflows are business critical for this workspace."],
+                open_ticket_ids=[outage_ticket_id],
+            ),
+            CustomerAccountRecord(
+                account_id=refund_account_id,
+                workspace_id=refund_workspace_id,
+                customer_name=refund_ticket.customer_name,
+                customer_tier="enterprise",
+                plan_name="Enterprise",
+                lifecycle_stage="at_risk",
+                support_history=["Finance reopened a previous refund when approval context was skipped."],
+                open_ticket_ids=[refund_ticket_id],
+            ),
+            CustomerAccountRecord(
+                account_id=access_account_id,
+                customer_name=access_ticket.customer_name,
+                customer_tier="standard",
+                plan_name="Pro",
+                lifecycle_stage="active",
+                support_history=["Routine sign-in issues only."],
+                open_ticket_ids=[access_ticket_id],
+            ),
+        ],
+        billing_accounts=[
+            BillingAccountRecord(
+                billing_account_id=security_billing_account_id,
+                account_id=security_account_id,
+                payment_status="paid",
+                refund_eligibility="blocked",
+            ),
+            BillingAccountRecord(
+                billing_account_id=outage_billing_account_id,
+                account_id=outage_account_id,
+                payment_status="paid",
+                refund_eligibility="blocked",
+            ),
+            BillingAccountRecord(
+                billing_account_id=refund_billing_account_id,
+                account_id=refund_account_id,
+                invoice_id=invoice_id,
+                payment_status="pending_review",
+                duplicate_charge_detected=True,
+                refund_eligibility="needs_review",
+                pending_refund_amount_usd=520.0,
+                ledger_notes=["Finance approval required before the refund can stay closed."],
+            ),
+            BillingAccountRecord(
+                billing_account_id=access_billing_account_id,
+                account_id=access_account_id,
+                payment_status="paid",
+                refund_eligibility="blocked",
+            ),
+        ],
+        policy_articles=_standard_policy_articles(),
+        world_summary=[
+            "A four-ticket queue is live with urgent security, outage, refund, and routine access work.",
+            "Correct sequencing matters because the queue mixes trust, engineering, and billing operations.",
+        ],
+        expectations=expectations,
+    )
+
+
+def _followup_reprioritization_queue_scenario(rng: random.Random) -> TaskScenario:
+    outage_ticket_id = _ticket_id(rng)
+    refund_ticket_id = _ticket_id(rng)
+    access_ticket_id = _ticket_id(rng)
+    outage_account_id = _account_id(rng)
+    refund_account_id = _account_id(rng)
+    access_account_id = _account_id(rng)
+    outage_billing_account_id = _billing_account_id(rng)
+    refund_billing_account_id = _billing_account_id(rng)
+    access_billing_account_id = _billing_account_id(rng)
+    workspace_id = _workspace_id(rng)
+    invoice_id = _invoice_id(rng)
+    browser_phrase = rng.choice(["Chrome 124", "Edge 123", "Firefox ESR"])
+    time_reference = rng.choice(["09:12 UTC", "13:48 UTC", "16:05 UTC"])
+
+    outage_ticket = TicketRecord(
+        ticket_id=outage_ticket_id,
+        customer_name=rng.choice(["Iris Walker", "Paula Gomez", "Samar Gupta"]),
+        customer_tier="business",
+        account_id=outage_account_id,
+        billing_account_id=outage_billing_account_id,
+        workspace_id=workspace_id,
+        subject="Export issue with missing repro details",
+        messages=[
+            TicketMessage(
+                role="customer",
+                content=(
+                    "Exports keep failing for our finance team, but I do not have the exact browser and "
+                    "timestamp handy yet. Please tell me what you need."
+                ),
+            )
+        ],
+        sla_hours_remaining=5,
+        tags=[
+            "outage",
+            "engineering",
+            "responds-fast",
+            "followup_workspace:" + workspace_id,
+            "followup_browser:" + browser_phrase,
+            "followup_time:" + time_reference,
+        ],
+    )
+    refund_ticket = TicketRecord(
+        ticket_id=refund_ticket_id,
+        customer_name=rng.choice(["Ava Thompson", "Diego Santos", "Maya Krishnan"]),
+        customer_tier="business",
+        account_id=refund_account_id,
+        billing_account_id=refund_billing_account_id,
+        subject=f"Duplicate charge on invoice {invoice_id}",
+        messages=[
+            TicketMessage(
+                role="customer",
+                content=f"We were charged twice on invoice {invoice_id}. Please help with a refund.",
+            )
+        ],
+        sla_hours_remaining=18,
+        tags=["billing", "refund"],
+    )
+    access_ticket = TicketRecord(
+        ticket_id=access_ticket_id,
+        customer_name=rng.choice(["Noah Bennett", "Priya Malhotra", "Sara Kim"]),
+        customer_tier="standard",
+        account_id=access_account_id,
+        billing_account_id=access_billing_account_id,
+        subject="Routine account access help",
+        messages=[TicketMessage(role="customer", content="Please resend my password reset link.")],
+        sla_hours_remaining=30,
+        tags=["access", "routine"],
+    )
+
+    return TaskScenario(
+        card=TaskCard(
+            task_id="followup_reprioritization_queue",
+            title="Follow-Up Reprioritization Queue",
+            difficulty="hard",
+            objective=(
+                "Handle a three-ticket queue where the leading outage becomes actionable only after the customer "
+                "responds with missing details. Request the right info, process the fast follow-up, and then escalate correctly."
+            ),
+            max_steps=16,
+            step_penalty=0.013,
+        ),
+        instructions=[
+            "Request the missing outage details first, then adjust the plan when the customer responds.",
+            "Do not let the refund or routine access ticket distract from the outage once repro details arrive.",
+        ],
+        policy_hints=[
+            "Customer follow-up can change ticket urgency and should influence queue priority.",
+            "After the follow-up, route the outage like a standard engineering escalation with useful context.",
+        ],
+        accessible_apps=[
+            EnterpriseApp.TICKETING_CONSOLE,
+            EnterpriseApp.CRM_WORKSPACE,
+            EnterpriseApp.BILLING_SYSTEM,
+            EnterpriseApp.INCIDENT_TRACKER,
+            EnterpriseApp.POLICY_HUB,
+        ],
+        tickets=[outage_ticket, refund_ticket, access_ticket],
+        customer_accounts=[
+            CustomerAccountRecord(
+                account_id=outage_account_id,
+                workspace_id=workspace_id,
+                customer_name=outage_ticket.customer_name,
+                customer_tier="business",
+                plan_name="Business",
+                lifecycle_stage="at_risk",
+                support_history=["Finance exports are business critical for this customer."],
+                open_ticket_ids=[outage_ticket_id],
+            ),
+            CustomerAccountRecord(
+                account_id=refund_account_id,
+                customer_name=refund_ticket.customer_name,
+                customer_tier="business",
+                plan_name="Business",
+                lifecycle_stage="active",
+                support_history=["Routine billing work only."],
+                open_ticket_ids=[refund_ticket_id],
+            ),
+            CustomerAccountRecord(
+                account_id=access_account_id,
+                customer_name=access_ticket.customer_name,
+                customer_tier="standard",
+                plan_name="Pro",
+                lifecycle_stage="active",
+                support_history=["Routine password reset requests."],
+                open_ticket_ids=[access_ticket_id],
+            ),
+        ],
+        billing_accounts=[
+            BillingAccountRecord(
+                billing_account_id=outage_billing_account_id,
+                account_id=outage_account_id,
+                payment_status="paid",
+                refund_eligibility="blocked",
+            ),
+            BillingAccountRecord(
+                billing_account_id=refund_billing_account_id,
+                account_id=refund_account_id,
+                invoice_id=invoice_id,
+                payment_status="paid",
+                duplicate_charge_detected=True,
+                refund_eligibility="eligible",
+                pending_refund_amount_usd=95.0,
+            ),
+            BillingAccountRecord(
+                billing_account_id=access_billing_account_id,
+                account_id=access_account_id,
+                payment_status="paid",
+                refund_eligibility="blocked",
+            ),
+        ],
+        policy_articles=_standard_policy_articles(),
+        world_summary=[
+            "The outage starts partially observable and becomes actionable after a fast customer follow-up.",
+            "The queue also includes routine billing and access work that can distract the agent.",
+        ],
+        expectations={
+            outage_ticket_id: TicketExpectation(
+                ticket_id=outage_ticket_id,
+                category=TicketCategory.INCIDENT_COORDINATION,
+                priority=TicketPriority.HIGH,
+                team=TicketTeam.ENGINEERING,
+                terminal_status="escalated",
+                reply_requirements=[
+                    ReplyRequirement(label="impact acknowledgement", phrases=["sorry", "blocking", "urgent"]),
+                    ReplyRequirement(label="detail request", phrases=["workspace", "timestamp", "browser"]),
+                    ReplyRequirement(label="escalation notice", phrases=["incident", "engineering", "investigating"]),
+                ],
+                forbidden_phrases=["guarantee", "fixed today", "definitely resolved"],
+                escalation_phrase_requirements=[workspace_id, browser_phrase, time_reference],
+            )
+        },
+    )
+
+
 def build_task_scenario(task_id: str, rng: random.Random) -> TaskScenario:
     if task_id == "billing_refund_easy":
         return _billing_refund_scenario(rng)
@@ -947,5 +1606,13 @@ def build_task_scenario(task_id: str, rng: random.Random) -> TaskScenario:
         return _incident_coordination_outage_scenario(rng)
     if task_id == "executive_security_escalation":
         return _executive_security_escalation_scenario(rng)
+    if task_id == "escalation_rejection_recovery":
+        return _escalation_rejection_recovery_scenario(rng)
+    if task_id == "refund_reopen_review":
+        return _refund_reopen_review_scenario(rng)
+    if task_id == "mixed_queue_command_center":
+        return _mixed_queue_command_center_scenario(rng)
+    if task_id == "followup_reprioritization_queue":
+        return _followup_reprioritization_queue_scenario(rng)
     raise ValueError(f"Unknown task_id '{task_id}'")
 

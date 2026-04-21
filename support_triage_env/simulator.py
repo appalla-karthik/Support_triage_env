@@ -24,8 +24,13 @@ from support_triage_env.models import (
     TicketMessage,
     TicketRecord,
     TicketStatus,
+    WorldEvent,
 )
 from support_triage_env.tasks import TaskScenario, build_task_scenario, task_ids
+
+
+def _join_text(items: list[str]) -> str:
+    return "\n".join(items)
 
 
 class SupportTriageSimulator:
@@ -82,6 +87,8 @@ class SupportTriageSimulator:
             incidents=[copy.deepcopy(incident) for incident in scenario.incidents],
             policy_articles=[copy.deepcopy(article) for article in scenario.policy_articles],
             world_summary=list(scenario.world_summary),
+            pending_events=[],
+            recent_events=[],
             last_tool_result=None,
             action_history=[],
             cumulative_reward=0.0,
@@ -140,6 +147,8 @@ class SupportTriageSimulator:
             return observation, reward, True, {"state": self.state().model_dump()}
 
         self._state.step_count += 1
+        self._state.recent_events = []
+        applied_event_messages = self._apply_pending_events()
 
         last_entry = self._state.action_history[-1] if self._state.action_history else None
         if (
@@ -320,8 +329,12 @@ class SupportTriageSimulator:
             if not invalid_reasons:
                 invalid_reasons.append(f"Unsupported action {action.action_type.value}.")
 
+        self._maybe_schedule_delayed_outcomes(action, ticket)
+
         if invalid_reasons:
             result_message = " ".join(invalid_reasons)
+        elif applied_event_messages:
+            result_message = " ".join([*applied_event_messages, result_message]).strip()
 
         if tool_result is not None:
             self._state.last_tool_result = tool_result
@@ -344,7 +357,7 @@ class SupportTriageSimulator:
         self._state.final_score = grade.score
 
         invalid_penalty = 0.07 if invalid_reasons else 0.0
-        step_penalty = 0.01
+        step_penalty = scenario.card.step_penalty
         reward_value = round(
             (grade.score - previous_score) - step_penalty - repeated_penalty - invalid_penalty,
             4,
@@ -443,6 +456,190 @@ class SupportTriageSimulator:
         if any(token in text for token in ["outage", "500 error", "502 error", "blocked"]):
             return IncidentSeverity.HIGH
         return IncidentSeverity.MEDIUM
+
+    def _action_taken(
+        self, action_type: ActionType, ticket_id: str | None = None
+    ) -> bool:
+        return any(
+            entry.action_type == action_type
+            and (ticket_id is None or entry.ticket_id == ticket_id)
+            for entry in self._state.action_history
+        )
+
+    def _schedule_event(
+        self,
+        ticket_id: str,
+        event_type: str,
+        message: str,
+        trigger_step: int | None = None,
+    ) -> None:
+        scheduled_step = trigger_step if trigger_step is not None else self._state.step_count + 1
+        if any(
+            event.ticket_id == ticket_id
+            and event.event_type == event_type
+            and event.status == "pending"
+            for event in self._state.pending_events
+        ):
+            return
+        self._state.pending_events.append(
+            WorldEvent(
+                event_id=f"EVT-{self._rng.randint(1000, 9999)}",
+                ticket_id=ticket_id,
+                event_type=event_type,
+                trigger_step=scheduled_step,
+                message=message,
+            )
+        )
+
+    def _tag_value(self, ticket: TicketRecord, prefix: str) -> str | None:
+        for tag in ticket.tags:
+            if tag.startswith(prefix):
+                return tag.split(":", 1)[1].strip()
+        return None
+
+    def _build_followup_message(self, ticket: TicketRecord) -> str:
+        workspace = self._tag_value(ticket, "followup_workspace:")
+        browser = self._tag_value(ticket, "followup_browser:")
+        time_reference = self._tag_value(ticket, "followup_time:")
+        details = [
+            part
+            for part in [
+                f"workspace {workspace}" if workspace else None,
+                f"browser {browser}" if browser else None,
+                f"around {time_reference}" if time_reference else None,
+            ]
+            if part
+        ]
+        if details:
+            return "Following up with the details you requested: " + ", ".join(details) + "."
+        return "Following up with the extra details you requested for the ticket."
+
+    def _apply_pending_events(self) -> list[str]:
+        applied_messages: list[str] = []
+        for event in self._state.pending_events:
+            if event.status != "pending" or event.trigger_step > self._state.step_count:
+                continue
+            ticket = next(
+                (candidate for candidate in self._state.tickets if candidate.ticket_id == event.ticket_id),
+                None,
+            )
+            if ticket is None:
+                event.status = "applied"
+                continue
+
+            if event.event_type == "escalation_rejected":
+                if ticket.current_status == TicketStatus.ESCALATED:
+                    ticket.current_status = TicketStatus.IN_PROGRESS
+                ticket.internal_notes.append(f"[system] {event.message}")
+                ticket.messages.append(TicketMessage(role="internal", content=event.message))
+            elif event.event_type == "ticket_reopened":
+                ticket.current_status = TicketStatus.OPEN
+                ticket.resolution_code = None
+                ticket.messages.append(TicketMessage(role="customer", content=event.message))
+                ticket.internal_notes.append("[system] Ticket reopened after downstream review.")
+            elif event.event_type == "customer_follow_up":
+                ticket.messages.append(TicketMessage(role="customer", content=event.message))
+                if ticket.current_status == TicketStatus.WAITING_FOR_CUSTOMER:
+                    ticket.current_status = TicketStatus.OPEN
+            elif event.event_type == "incident_update":
+                ticket.internal_notes.append(f"[incident_tracker] {event.message}")
+            elif event.event_type == "policy_drift":
+                ticket.internal_notes.append(f"[policy_hub] {event.message}")
+
+            event.status = "applied"
+            applied_messages.append(event.message)
+            self._state.recent_events.append(event.model_copy(deep=True))
+        return applied_messages
+
+    def _missing_escalation_requirements(
+        self, ticket: TicketRecord, expectation_text: str
+    ) -> list[str]:
+        if self._scenario is None:
+            return []
+        expectation = self._scenario.expectations.get(ticket.ticket_id)
+        if expectation is None:
+            return []
+        return [
+            phrase
+            for phrase in expectation.escalation_phrase_requirements
+            if phrase and phrase.lower() not in expectation_text.lower()
+        ]
+
+    def _maybe_schedule_delayed_outcomes(
+        self, action: SupportTriageAction, ticket: TicketRecord | None
+    ) -> None:
+        if ticket is None:
+            return
+
+        if (
+            action.action_type == ActionType.ESCALATE_TICKET
+            and "escalation-review" in ticket.tags
+        ):
+            escalation_text = _join_text(ticket.internal_notes)
+            missing_requirements = self._missing_escalation_requirements(ticket, escalation_text)
+            if (
+                ticket.linked_incident_id is None
+                or not self._action_taken(ActionType.SEARCH_POLICY, ticket.ticket_id)
+                or len(missing_requirements) >= 2
+            ):
+                self._schedule_event(
+                    ticket.ticket_id,
+                    "escalation_rejected",
+                    (
+                        "Engineering rejected the escalation packet. Add an incident link plus "
+                        "workspace, timing, and repro detail before resubmitting."
+                    ),
+                )
+
+        if (
+            action.action_type == ActionType.RESOLVE_TICKET
+            and "reopen-risk" in ticket.tags
+        ):
+            billing_review_complete = self._action_taken(
+                ActionType.CHECK_BILLING_STATUS, ticket.ticket_id
+            )
+            policy_review_complete = self._action_taken(
+                ActionType.SEARCH_POLICY, ticket.ticket_id
+            )
+            if not (billing_review_complete and policy_review_complete):
+                billing_account = self._find_billing_account(ticket.billing_account_id)
+                if billing_account is not None:
+                    billing_account.payment_status = "pending_review"
+                    billing_account.refund_eligibility = "needs_review"
+                    billing_account.ledger_notes.append(
+                        "Refund reopened because finance approval context was missing."
+                    )
+                self._schedule_event(
+                    ticket.ticket_id,
+                    "ticket_reopened",
+                    (
+                        "Finance reopened the refund because the current approval workflow was not "
+                        "confirmed. Please review billing and policy before resolving again."
+                    ),
+                )
+
+        if (
+            action.action_type == ActionType.REQUEST_INFO
+            and "responds-fast" in ticket.tags
+        ):
+            self._schedule_event(
+                ticket.ticket_id,
+                "customer_follow_up",
+                self._build_followup_message(ticket),
+            )
+
+        if (
+            action.action_type == ActionType.CREATE_INCIDENT
+            and "incident-follow-up" in ticket.tags
+        ):
+            self._schedule_event(
+                ticket.ticket_id,
+                "incident_update",
+                (
+                    "Engineering accepted the incident and asked support to keep the customer updated "
+                    "with workspace, timing, and browser context."
+                ),
+            )
 
     def _advance_world_state(self, action: SupportTriageAction) -> None:
         acted_ticket_id = action.ticket_id
@@ -574,6 +771,10 @@ class SupportTriageSimulator:
                 f"{len(at_risk_accounts)} accounts in at-risk or security-hold states."
             ),
         ]
+        if any(event.status == "pending" for event in self._state.pending_events):
+            summary.append(
+                f"Pending events: {sum(1 for event in self._state.pending_events if event.status == 'pending')} downstream updates queued."
+            )
         self._state.world_summary = summary
 
     def _build_observation(
@@ -604,6 +805,7 @@ class SupportTriageSimulator:
             accessible_apps=list(self._state.accessible_apps),
             app_snapshots=self._build_app_snapshots(),
             world_summary=list(self._state.world_summary),
+            recent_events=[event.model_copy(deep=True) for event in self._state.recent_events],
             last_tool_result=copy.deepcopy(self._state.last_tool_result),
             progress=self._state.progress.model_copy(deep=True),
             available_actions=[action.value for action in ActionType],

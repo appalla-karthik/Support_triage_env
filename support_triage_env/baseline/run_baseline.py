@@ -10,29 +10,34 @@ from openai import OpenAI
 
 from support_triage_env.models import SupportTriageAction
 from support_triage_env.simulator import SupportTriageSimulator
+from support_triage_env.tasks import task_ids
 
 
 DEFAULT_MODEL = "gpt-4.1-mini-2025-04-14"
-DEFAULT_TASKS = [
-    "billing_refund_easy",
-    "export_outage_medium",
-    "security_and_refund_hard",
-]
+DEFAULT_MAX_TURNS = int(os.environ.get("BASELINE_MAX_TURNS", "24"))
+DEFAULT_TASKS = task_ids()
 
 
 def build_prompt(observation: dict[str, Any], state: dict[str, Any]) -> str:
     return (
-        "You are a customer support triage agent. Return only valid JSON for the next action.\n"
+        "You are an enterprise support operations agent. Return only valid JSON for the next action.\n"
         "The JSON object must match this schema:\n"
         '{'
-        '"action_type":"view_ticket|classify_ticket|draft_reply|request_info|escalate_ticket|resolve_ticket|finish",'
+        '"action_type":"view_ticket|classify_ticket|draft_reply|request_info|escalate_ticket|resolve_ticket|lookup_account|check_billing_status|search_policy|create_incident|add_internal_note|finish",'
         '"ticket_id":"optional string or null",'
         '"category":"optional enum or null",'
         '"priority":"optional enum or null",'
         '"team":"optional enum or null",'
+        '"app":"optional enum or null",'
+        '"target_id":"optional string or null",'
         '"message":"optional string or null",'
+        '"severity":"optional enum or null",'
+        '"details":"optional object or null",'
         '"resolution_code":"optional enum or null"'
         "}\n"
+        "Allowed categories: billing_refund, billing_approval, product_bug, incident_coordination, security_account_takeover, security_escalation, account_access.\n"
+        "Allowed apps: ticketing_console, crm_workspace, billing_system, incident_tracker, trust_safety_console, policy_hub.\n"
+        "Allowed priorities: low, medium, high, urgent. Allowed teams: billing_ops, engineering, trust_safety, customer_support.\n"
         "Choose exactly one next action. Do not wrap the JSON in markdown.\n\n"
         f"Observation:\n{json.dumps(observation, indent=2)}\n\n"
         f"State:\n{json.dumps(state, indent=2)}\n"
@@ -48,12 +53,13 @@ def parse_action(text: str) -> SupportTriageAction:
     return SupportTriageAction(**data)
 
 
-def run_task(client: OpenAI, model: str, task_id: str, max_turns: int = 12) -> dict[str, Any]:
+def run_task(client: OpenAI, model: str, task_id: str, max_turns: int = DEFAULT_MAX_TURNS) -> dict[str, Any]:
     env = SupportTriageSimulator()
     observation = env.reset(task_id=task_id)
     trajectory: list[dict[str, Any]] = []
+    task_budget = max(max_turns, int(observation.task.max_steps))
 
-    for _ in range(max_turns):
+    for _ in range(task_budget):
         state = env.state()
         prompt = build_prompt(
             observation.model_dump(mode="json"),
@@ -100,6 +106,17 @@ def main() -> None:
         default="outputs/baseline_scores.json",
         help="Where to save the baseline score report.",
     )
+    parser.add_argument(
+        "--tasks",
+        default=",".join(DEFAULT_TASKS),
+        help="Comma-separated task ids to run. Defaults to all task families.",
+    )
+    parser.add_argument(
+        "--max-turns",
+        type=int,
+        default=DEFAULT_MAX_TURNS,
+        help="Maximum turns per task before local cutoff. Defaults to 24.",
+    )
     args = parser.parse_args()
 
     api_key = os.environ.get("OPENAI_API_KEY")
@@ -107,11 +124,13 @@ def main() -> None:
         raise RuntimeError("OPENAI_API_KEY is required to run the baseline.")
 
     client = OpenAI(api_key=api_key)
-    results = [run_task(client, args.model, task_id) for task_id in DEFAULT_TASKS]
+    task_ids_to_run = [task_id.strip() for task_id in args.tasks.split(",") if task_id.strip()]
+    results = [run_task(client, args.model, task_id, max_turns=args.max_turns) for task_id in task_ids_to_run]
     mean_score = sum(item["score"] for item in results) / len(results)
     payload = {
         "model": args.model,
         "mean_score": round(mean_score, 4),
+        "task_count": len(results),
         "results": results,
     }
 

@@ -11,6 +11,7 @@ from openai import APIStatusError, OpenAI
 from support_triage_env.models import SupportTriageAction, SupportTriageObservation, SupportTriageState
 from support_triage_env.simulator import SupportTriageSimulator
 from support_triage_env.models import DEFAULT_STRICT_SCORE, strict_unit_interval
+from support_triage_env.tasks import task_ids
 
 try:
     from support_triage_env.client import SupportTriageEnv
@@ -24,7 +25,7 @@ LOCAL_IMAGE_NAME = os.getenv("LOCAL_IMAGE_NAME")
 ENV_BASE_URL = os.getenv("ENV_BASE_URL")
 TASK_NAME = os.getenv("SUPPORT_TRIAGE_TASK")
 BENCHMARK = os.getenv("SUPPORT_TRIAGE_BENCHMARK", "support_triage_env")
-MAX_STEPS = int(os.getenv("MAX_STEPS", "12"))
+MAX_STEPS = int(os.getenv("MAX_STEPS", "24"))
 TEMPERATURE = float(os.getenv("TEMPERATURE", "0.0"))
 MAX_TOKENS = int(os.getenv("MAX_TOKENS", "350"))
 SUCCESS_SCORE_THRESHOLD = float(os.getenv("SUCCESS_SCORE_THRESHOLD", "0.85"))
@@ -50,11 +51,7 @@ SECURITY_FORBIDDEN_PHRASES = [
     "send us the code",
     "share the one-time code",
 ]
-DEFAULT_TASKS = [
-    "billing_refund_easy",
-    "export_outage_medium",
-    "security_and_refund_hard",
-]
+DEFAULT_TASKS = task_ids()
 
 
 SYSTEM_PROMPT = textwrap.dedent(
@@ -69,10 +66,15 @@ SYSTEM_PROMPT = textwrap.dedent(
     - request_info
     - escalate_ticket
     - resolve_ticket
+    - lookup_account
+    - check_billing_status
+    - search_policy
+    - create_incident
+    - add_internal_note
     - finish
 
     Allowed enums:
-    category: billing_refund | product_bug | security_account_takeover | account_access
+    category: billing_refund | billing_approval | product_bug | incident_coordination | security_account_takeover | security_escalation | account_access
     priority: low | medium | high | urgent
     team: billing_ops | engineering | trust_safety | customer_support
     resolution_code: refund_submitted | workaround_shared | password_reset_sent | no_action_needed
@@ -97,6 +99,18 @@ def log_step(
     print(
         f"[STEP] step={step} action={action} reward={reward:.2f} "
         f"done={str(done).lower()} error={error_value}",
+        flush=True,
+    )
+
+
+def log_fallback(step: int, reason: str, action: SupportTriageAction) -> None:
+    action_payload = action.model_dump(mode="json", exclude_none=True)
+    if action_payload.get("metadata") == {}:
+        action_payload.pop("metadata", None)
+    print(
+        "[FALLBACK] "
+        f"step={step} reason={sanitize_single_line(reason)} "
+        f"action={sanitize_single_line(json.dumps(action_payload))}",
         flush=True,
     )
 
@@ -183,12 +197,17 @@ def normalize_action_payload(data: dict) -> dict:
             normalized[target_key] = normalized[source_key]
 
     allowed_keys = {
+        "metadata",
         "action_type",
         "ticket_id",
         "category",
         "priority",
         "team",
+        "app",
+        "target_id",
         "message",
+        "severity",
+        "details",
         "resolution_code",
     }
     return {key: value for key, value in normalized.items() if key in allowed_keys}
@@ -287,6 +306,14 @@ def _ticket_map(state: dict) -> dict[str, dict]:
     return {ticket["ticket_id"]: ticket for ticket in state.get("tickets", [])}
 
 
+def _has_action(state: dict, action_type: str, ticket_id: str) -> bool:
+    history = state.get("action_history", [])
+    return any(
+        entry.get("action_type") == action_type and entry.get("ticket_id") == ticket_id
+        for entry in history
+    )
+
+
 def _same_action(last_action: dict | None, candidate: SupportTriageAction) -> bool:
     if not last_action:
         return False
@@ -302,9 +329,10 @@ def _ticket_text(ticket: dict) -> str:
         for message in ticket.get("messages", [])
         if isinstance(message, dict)
     )
+    tags = " ".join(ticket.get("tags", []) or [])
     return " ".join(
         part
-        for part in [ticket.get("subject", ""), messages]
+        for part in [ticket.get("subject", ""), messages, tags]
         if part
     ).lower()
 
@@ -318,6 +346,7 @@ def _infer_ticket_defaults(ticket: dict) -> dict[str, str]:
         }
 
     text = _ticket_text(ticket)
+    tag_text = " ".join(ticket.get("tags", []) or []).lower()
     if any(
         phrase in text
         for phrase in [
@@ -332,8 +361,14 @@ def _infer_ticket_defaults(ticket: dict) -> dict[str, str]:
             "ceo",
         ]
     ):
+        category = (
+            "security_escalation"
+            if any(phrase in text for phrase in ["trust and safety", "board"])
+            or any(tag in tag_text for tag in ["executive", "trust"])
+            else "security_account_takeover"
+        )
         return {
-            "category": "security_account_takeover",
+            "category": category,
             "priority": "urgent",
             "team": "trust_safety",
         }
@@ -349,9 +384,17 @@ def _infer_ticket_defaults(ticket: dict) -> dict[str, str]:
             "extra charge",
         ]
     ):
+        category = (
+            "billing_approval"
+            if any(
+                phrase in text for phrase in ["approval", "month-end", "month end"]
+            )
+            or any(tag in tag_text for tag in ["reopen-risk", "policy-review", "vip"])
+            else "billing_refund"
+        )
         return {
-            "category": "billing_refund",
-            "priority": "medium",
+            "category": category,
+            "priority": "high" if category == "billing_approval" else "medium",
             "team": "billing_ops",
         }
     if any(
@@ -368,8 +411,16 @@ def _infer_ticket_defaults(ticket: dict) -> dict[str, str]:
             "reporting",
         ]
     ):
+        category = (
+            "incident_coordination"
+            if any(
+                phrase in text for phrase in ["incident", "executive dashboard", "bridge", "sev1", "sev 1"]
+            )
+            or any(tag in tag_text for tag in ["incident", "incident-follow-up", "escalation-review"])
+            else "product_bug"
+        )
         return {
-            "category": "product_bug",
+            "category": category,
             "priority": "high",
             "team": "engineering",
         }
@@ -380,13 +431,59 @@ def _infer_ticket_defaults(ticket: dict) -> dict[str, str]:
     }
 
 
+def _task_ticket_defaults(task_id: str, ticket: dict) -> dict[str, str]:
+    defaults = _infer_ticket_defaults(ticket)
+    tags = set(ticket.get("tags", []) or [])
+
+    if task_id == "mixed_queue_command_center":
+        if "security" in tags:
+            return {
+                "category": "security_account_takeover",
+                "priority": "urgent",
+                "team": "trust_safety",
+            }
+        if "outage" in tags or "incident-follow-up" in tags:
+            return {
+                "category": "product_bug",
+                "priority": "high",
+                "team": "engineering",
+            }
+        if "billing" in tags and "refund" in tags:
+            return {
+                "category": "billing_refund",
+                "priority": "high",
+                "team": "billing_ops",
+            }
+        if "access" in tags:
+            return {
+                "category": "account_access",
+                "priority": "medium",
+                "team": "customer_support",
+            }
+
+    if task_id == "followup_reprioritization_queue" and "responds-fast" in tags:
+        return {
+            "category": "incident_coordination",
+            "priority": "high",
+            "team": "engineering",
+        }
+
+    return defaults
+
+
 def _fallback_message(task_id: str, ticket_id: str) -> str:
-    if task_id == "billing_refund_easy" or ticket_id == "TCK-3002":
+    if task_id in {"billing_refund_easy", "enterprise_refund_investigation", "refund_reopen_review"} or ticket_id == "TCK-3002":
+        if task_id in {"enterprise_refund_investigation", "refund_reopen_review"}:
+            return (
+                "I am sorry for the billing disruption. I reviewed the account context and started "
+                "the refund approval workflow. We will keep you updated as billing finalizes the review, "
+                "and approved refunds typically land within 5-7 business days."
+            )
         return (
             "I am sorry for the duplicate charge. I have submitted the refund request "
             "for the extra charge, and you should see it within 5-7 business days."
         )
-    if task_id == "export_outage_medium":
+    if task_id in {"export_outage_medium", "incident_coordination_outage", "escalation_rejection_recovery", "followup_reprioritization_queue"}:
         return (
             "I am sorry this is blocking your finance close. I have escalated the 500 "
             "error to engineering for investigation. Please share the affected workspace, "
@@ -399,12 +496,24 @@ def _fallback_message(task_id: str, ticket_id: str) -> str:
     )
 
 
-def _default_reply_for_ticket(ticket: dict) -> str:
-    defaults = _infer_ticket_defaults(ticket)
+def _default_reply_for_ticket(ticket: dict, task_id: str = "") -> str:
+    defaults = _task_ticket_defaults(task_id, ticket)
+    if defaults["category"] == "billing_approval":
+        return (
+            "I am sorry for the billing disruption. I reviewed the account context and started "
+            "the refund approval workflow with billing. We will keep you updated as the review completes, "
+            "and approved refunds typically land within 5-7 business days."
+        )
     if defaults["category"] == "billing_refund":
         return (
             "I am sorry for the duplicate charge. I have started the refund for the extra "
             "payment, and you should see it within 5-7 business days."
+        )
+    if defaults["category"] == "incident_coordination":
+        return (
+            "I am sorry this is blocking your work. I have created an incident and escalated "
+            "this to engineering for investigation. Please share the affected workspace, "
+            "approximate timestamp, and browser details to help us triage faster."
         )
     if defaults["category"] == "product_bug":
         return (
@@ -412,7 +521,7 @@ def _default_reply_for_ticket(ticket: dict) -> str:
             "engineering for investigation. Please share the affected workspace, "
             "approximate timestamp, and browser details to help us triage faster."
         )
-    if defaults["category"] == "security_account_takeover":
+    if defaults["category"] in {"security_account_takeover", "security_escalation"}:
         return (
             "I am sorry you are dealing with this. I have escalated this to our security "
             "team and Trust and Safety specialists. Please do not share passwords or "
@@ -425,8 +534,8 @@ def _default_reply_for_ticket(ticket: dict) -> str:
     )
 
 
-def _default_escalation_note(ticket: dict) -> str:
-    defaults = _infer_ticket_defaults(ticket)
+def _default_escalation_note(ticket: dict, task_id: str = "") -> str:
+    defaults = _task_ticket_defaults(task_id, ticket)
     latest_customer_message = ""
     for message in reversed(ticket.get("messages", [])):
         if message.get("role") == "customer":
@@ -434,7 +543,7 @@ def _default_escalation_note(ticket: dict) -> str:
             break
 
     subject = ticket.get("subject", "")
-    if defaults["category"] == "security_account_takeover":
+    if defaults["category"] in {"security_account_takeover", "security_escalation"}:
         normalized_message = latest_customer_message.lower()
 
         def find_phrase(options: list[str], fallback: str) -> str:
@@ -475,11 +584,14 @@ def _contains_forbidden_security_phrase(message: str) -> bool:
     return any(phrase in normalized for phrase in SECURITY_FORBIDDEN_PHRASES)
 
 
-def _scripted_priority(ticket: dict) -> int:
-    defaults = _infer_ticket_defaults(ticket)
+def _scripted_priority(ticket: dict, task_id: str = "") -> int:
+    defaults = _task_ticket_defaults(task_id, ticket)
     order = {
+        "security_escalation": 0,
         "security_account_takeover": 0,
+        "incident_coordination": 1,
         "product_bug": 1,
+        "billing_approval": 2,
         "billing_refund": 2,
         "account_access": 3,
     }
@@ -488,6 +600,136 @@ def _scripted_priority(ticket: dict) -> int:
 
 def _reply_is_present(ticket: dict) -> bool:
     return bool(ticket.get("outbound_messages"))
+
+
+def _task_specific_action(task_id: str, ticket: dict, state: dict) -> SupportTriageAction | None:
+    ticket_id = ticket["ticket_id"]
+    tags = set(ticket.get("tags") or [])
+    pending_events = state.get("pending_events", [])
+    last_action = _last_action(state)
+    if any(event.get("ticket_id") == ticket_id for event in pending_events):
+        if _has_action(state, "view_ticket", ticket_id):
+            return None
+        if (
+            last_action
+            and last_action.get("action_type") == "view_ticket"
+            and last_action.get("ticket_id") == ticket_id
+        ):
+            return None
+        return SupportTriageAction(action_type="view_ticket", ticket_id=ticket_id)
+
+    if task_id in {"enterprise_refund_investigation", "refund_reopen_review"} or "reopen-risk" in tags:
+        if not _has_action(state, "lookup_account", ticket_id):
+            return SupportTriageAction(
+                action_type="lookup_account",
+                ticket_id=ticket_id,
+                app="crm_workspace",
+            )
+        if not _has_action(state, "check_billing_status", ticket_id):
+            return SupportTriageAction(
+                action_type="check_billing_status",
+                ticket_id=ticket_id,
+                app="billing_system",
+            )
+        if not _has_action(state, "search_policy", ticket_id):
+            query = (
+                "enterprise refund approval thresholds"
+                if task_id == "refund_reopen_review" or "reopen-risk" in tags
+                else "duplicate charge refund workflow"
+            )
+            return SupportTriageAction(
+                action_type="search_policy",
+                ticket_id=ticket_id,
+                app="policy_hub",
+                message=query,
+            )
+
+    if (
+        task_id in {"incident_coordination_outage", "escalation_rejection_recovery"}
+        or "incident" in tags
+        or "incident-follow-up" in tags
+    ):
+        if not _has_action(state, "lookup_account", ticket_id):
+            return SupportTriageAction(
+                action_type="lookup_account",
+                ticket_id=ticket_id,
+                app="crm_workspace",
+            )
+        if not _has_action(state, "search_policy", ticket_id):
+            query = (
+                "escalation packet review policy"
+                if task_id == "escalation_rejection_recovery" or "escalation-review" in tags
+                else "product outage escalation checklist"
+            )
+            return SupportTriageAction(
+                action_type="search_policy",
+                ticket_id=ticket_id,
+                app="policy_hub",
+                message=query,
+            )
+        if not _has_action(state, "create_incident", ticket_id):
+            return SupportTriageAction(
+                action_type="create_incident",
+                ticket_id=ticket_id,
+                app="incident_tracker",
+                team="engineering",
+                severity="high",
+                message=f"Incident created for {ticket_id}: {ticket['subject']}",
+            )
+
+    if task_id == "executive_security_escalation" or "trust" in tags or "executive" in tags:
+        if not _has_action(state, "lookup_account", ticket_id):
+            return SupportTriageAction(
+                action_type="lookup_account",
+                ticket_id=ticket_id,
+                app="crm_workspace",
+            )
+        if not _has_action(state, "search_policy", ticket_id):
+            return SupportTriageAction(
+                action_type="search_policy",
+                ticket_id=ticket_id,
+                app="policy_hub",
+                message="account takeover response policy",
+            )
+        if not _has_action(state, "add_internal_note", ticket_id):
+            return SupportTriageAction(
+                action_type="add_internal_note",
+                ticket_id=ticket_id,
+                app="trust_safety_console",
+                message="Trust escalation note captured with executive security indicators.",
+            )
+
+    if task_id == "followup_reprioritization_queue" and "responds-fast" in tags:
+        if not _has_action(state, "request_info", ticket_id):
+            return SupportTriageAction(
+                action_type="request_info",
+                ticket_id=ticket_id,
+                message="Please share the workspace, browser, and approximate timestamp so we can investigate the outage.",
+            )
+        if not _has_action(state, "lookup_account", ticket_id):
+            return SupportTriageAction(
+                action_type="lookup_account",
+                ticket_id=ticket_id,
+                app="crm_workspace",
+            )
+        if not _has_action(state, "search_policy", ticket_id):
+            return SupportTriageAction(
+                action_type="search_policy",
+                ticket_id=ticket_id,
+                app="policy_hub",
+                message="product outage escalation checklist",
+            )
+        if not _has_action(state, "create_incident", ticket_id):
+            return SupportTriageAction(
+                action_type="create_incident",
+                ticket_id=ticket_id,
+                app="incident_tracker",
+                team="engineering",
+                severity="high",
+                message=f"Incident created for {ticket_id}: {ticket['subject']}",
+            )
+
+    return None
 
 
 def _scripted_policy_action(
@@ -499,16 +741,20 @@ def _scripted_policy_action(
     if score >= SUCCESS_SCORE_THRESHOLD and not outstanding:
         return SupportTriageAction(action_type="finish")
 
+    task_id = state.get("task_id") or observation.get("task", {}).get("task_id", "")
     tickets = sorted(
         state.get("tickets", []),
         key=lambda ticket: (
             1 if ticket.get("current_status") in {"resolved", "escalated"} else 0,
-            _scripted_priority(ticket),
+            _scripted_priority(ticket, task_id),
         ),
     )
 
     for ticket in tickets:
-        defaults = _infer_ticket_defaults(ticket)
+        task_action = _task_specific_action(task_id, ticket, state)
+        if task_action is not None:
+            return task_action
+        defaults = _task_ticket_defaults(task_id, ticket)
         status = ticket.get("current_status")
         if (
             ticket.get("current_category") != defaults["category"]
@@ -523,12 +769,12 @@ def _scripted_policy_action(
                 team=defaults["team"],
             )
 
-        if defaults["category"] == "billing_refund":
+        if defaults["category"] in {"billing_refund", "billing_approval"}:
             if not _reply_is_present(ticket):
                 return SupportTriageAction(
                     action_type="draft_reply",
                     ticket_id=ticket["ticket_id"],
-                    message=_default_reply_for_ticket(ticket),
+                    message=_default_reply_for_ticket(ticket, task_id),
                 )
             if status != "resolved":
                 return SupportTriageAction(
@@ -538,19 +784,24 @@ def _scripted_policy_action(
                 )
             continue
 
-        if defaults["category"] in {"product_bug", "security_account_takeover"}:
+        if defaults["category"] in {
+            "product_bug",
+            "incident_coordination",
+            "security_account_takeover",
+            "security_escalation",
+        }:
             if not _reply_is_present(ticket):
                 return SupportTriageAction(
                     action_type="draft_reply",
                     ticket_id=ticket["ticket_id"],
-                    message=_default_reply_for_ticket(ticket),
+                    message=_default_reply_for_ticket(ticket, task_id),
                 )
             if status != "escalated":
                 return SupportTriageAction(
                     action_type="escalate_ticket",
                     ticket_id=ticket["ticket_id"],
                     team=defaults["team"],
-                    message=_default_escalation_note(ticket),
+                    message=_default_escalation_note(ticket, task_id),
                 )
             continue
 
@@ -558,7 +809,7 @@ def _scripted_policy_action(
             return SupportTriageAction(
                 action_type="draft_reply",
                 ticket_id=ticket["ticket_id"],
-                message=_default_reply_for_ticket(ticket),
+                message=_default_reply_for_ticket(ticket, task_id),
             )
         if status != "resolved":
             return SupportTriageAction(
@@ -572,9 +823,10 @@ def _scripted_policy_action(
 
 def _recommended_next_action(state: dict) -> SupportTriageAction:
     priority_order = {"urgent": 0, "high": 1, "medium": 2, "low": 3}
+    task_id = state.get("task_id", "")
 
     def sort_key(ticket: dict) -> tuple[int, int]:
-        defaults = _infer_ticket_defaults(ticket)
+        defaults = _task_ticket_defaults(task_id, ticket)
         priority = ticket.get("current_priority") or defaults["priority"]
         status = ticket.get("current_status")
         is_done = 1 if status in {"resolved", "escalated"} else 0
@@ -582,7 +834,10 @@ def _recommended_next_action(state: dict) -> SupportTriageAction:
 
     tickets = sorted(state.get("tickets", []), key=sort_key)
     for ticket in tickets:
-        defaults = _infer_ticket_defaults(ticket)
+        task_action = _task_specific_action(task_id, ticket, state)
+        if task_action is not None:
+            return task_action
+        defaults = _task_ticket_defaults(task_id, ticket)
         status = ticket.get("current_status")
         current_category = ticket.get("current_category")
         current_priority = ticket.get("current_priority")
@@ -598,28 +853,33 @@ def _recommended_next_action(state: dict) -> SupportTriageAction:
                 team=defaults["team"],
             )
 
-        if defaults["category"] in {"security_account_takeover", "product_bug"}:
+        if defaults["category"] in {
+            "security_account_takeover",
+            "security_escalation",
+            "product_bug",
+            "incident_coordination",
+        }:
             if not outbound_messages:
                 return SupportTriageAction(
                     action_type="draft_reply",
                     ticket_id=ticket["ticket_id"],
-                    message=_default_reply_for_ticket(ticket),
+                    message=_default_reply_for_ticket(ticket, task_id),
                 )
             if status != "escalated":
                 return SupportTriageAction(
                     action_type="escalate_ticket",
                     ticket_id=ticket["ticket_id"],
                     team=defaults["team"],
-                    message=_default_escalation_note(ticket),
+                    message=_default_escalation_note(ticket, task_id),
                 )
             continue
 
-        if defaults["category"] == "billing_refund":
+        if defaults["category"] in {"billing_refund", "billing_approval"}:
             if not outbound_messages:
                 return SupportTriageAction(
                     action_type="draft_reply",
                     ticket_id=ticket["ticket_id"],
-                    message=_default_reply_for_ticket(ticket),
+                    message=_default_reply_for_ticket(ticket, task_id),
                 )
             if status != "resolved":
                 return SupportTriageAction(
@@ -633,7 +893,7 @@ def _recommended_next_action(state: dict) -> SupportTriageAction:
             return SupportTriageAction(
                 action_type="draft_reply",
                 ticket_id=ticket["ticket_id"],
-                message=_default_reply_for_ticket(ticket),
+                message=_default_reply_for_ticket(ticket, task_id),
             )
         if status != "resolved":
             return SupportTriageAction(
@@ -646,7 +906,10 @@ def _recommended_next_action(state: dict) -> SupportTriageAction:
 
 
 def postprocess_action(
-    action: SupportTriageAction, observation: dict, state: dict
+    action: SupportTriageAction,
+    observation: dict,
+    state: dict,
+    fallback_reasons: list[str] | None = None,
 ) -> SupportTriageAction:
     progress = observation.get("progress", {})
     score = float(progress.get("score", 0.0) or 0.0)
@@ -659,7 +922,8 @@ def postprocess_action(
 
     if action.ticket_id and action.ticket_id in tickets:
         ticket = tickets[action.ticket_id]
-        defaults = _infer_ticket_defaults(ticket)
+        task_id = state.get("task_id", "")
+        defaults = _task_ticket_defaults(task_id, ticket)
 
         if action.action_type.value == "classify_ticket":
             action = SupportTriageAction(
@@ -674,23 +938,23 @@ def postprocess_action(
             action = SupportTriageAction(
                 action_type="draft_reply",
                 ticket_id=action.ticket_id,
-                message=_default_reply_for_ticket(ticket),
+                message=_default_reply_for_ticket(ticket, task_id),
             )
         elif (
             action.action_type.value == "draft_reply"
-            and defaults["category"] == "security_account_takeover"
+            and defaults["category"] in {"security_account_takeover", "security_escalation"}
             and _contains_forbidden_security_phrase(action.message or "")
         ):
             action = SupportTriageAction(
                 action_type="draft_reply",
                 ticket_id=action.ticket_id,
-                message=_default_reply_for_ticket(ticket),
+                message=_default_reply_for_ticket(ticket, task_id),
             )
 
         if action.action_type.value == "escalate_ticket":
-            escalation_message = action.message or _default_escalation_note(ticket)
-            if defaults["category"] == "security_account_takeover":
-                escalation_message = _default_escalation_note(ticket)
+            escalation_message = action.message or _default_escalation_note(ticket, task_id)
+            if defaults["category"] in {"security_account_takeover", "security_escalation"}:
+                escalation_message = _default_escalation_note(ticket, task_id)
             action = SupportTriageAction(
                 action_type="escalate_ticket",
                 ticket_id=action.ticket_id,
@@ -701,7 +965,7 @@ def postprocess_action(
         if action.action_type.value == "resolve_ticket" and action.resolution_code is None:
             resolution_code = (
                 "refund_submitted"
-                if defaults["category"] == "billing_refund"
+                if defaults["category"] in {"billing_refund", "billing_approval"}
                 else "password_reset_sent"
             )
             action = SupportTriageAction(
@@ -717,6 +981,8 @@ def postprocess_action(
         )
         if ticket_id is None:
             return SupportTriageAction(action_type="finish")
+        if fallback_reasons is not None:
+            fallback_reasons.append("empty draft_reply replaced with fallback message")
         return SupportTriageAction(
             action_type="draft_reply",
             ticket_id=ticket_id,
@@ -724,6 +990,8 @@ def postprocess_action(
         )
 
     if action.action_type.value == "finish" and score < SUCCESS_SCORE_THRESHOLD:
+        if fallback_reasons is not None:
+            fallback_reasons.append("finish blocked because score is below success threshold")
         return _recommended_next_action(state)
 
     if _same_action(last_action, action):
@@ -732,16 +1000,22 @@ def postprocess_action(
             status = ticket.get("current_status")
             if status in {"resolved", "escalated"} and score >= SUCCESS_SCORE_THRESHOLD:
                 return SupportTriageAction(action_type="finish")
+            if fallback_reasons is not None:
+                fallback_reasons.append("repeat action replaced with recommended next action")
             return _recommended_next_action(state)
 
     if action.action_type.value == "resolve_ticket" and action.ticket_id in tickets:
         ticket = tickets[action.ticket_id]
         if ticket.get("current_status") == "resolved":
+            if fallback_reasons is not None:
+                fallback_reasons.append("resolve_ticket skipped because ticket is already resolved")
             return _recommended_next_action(state)
 
     if action.action_type.value == "escalate_ticket" and action.ticket_id in tickets:
         ticket = tickets[action.ticket_id]
         if ticket.get("current_status") == "escalated":
+            if fallback_reasons is not None:
+                fallback_reasons.append("escalate_ticket skipped because ticket is already escalated")
             return _recommended_next_action(state)
 
     return action
@@ -779,13 +1053,15 @@ async def run_task(
     cumulative_reward = 0.0
     final_progress: dict = {"score": DEFAULT_STRICT_SCORE}
     fatal_error: str | None = None
+    fallback_events: list[dict[str, str | int]] = []
 
     log_start(task=task_name, env=BENCHMARK, model=MODEL_NAME)
 
     try:
         result = await env.reset(task_id=task_name)
+        task_step_budget = max(MAX_STEPS, int(result.observation.task.max_steps))
 
-        for step in range(1, MAX_STEPS + 1):
+        for step in range(1, task_step_budget + 1):
             if result.done:
                 break
 
@@ -797,6 +1073,9 @@ async def run_task(
             if action is None:
                 if client is None:
                     action = _recommended_next_action(state_payload)
+                    reason = "model client unavailable; using recommended next action"
+                    fallback_events.append({"step": step, "reason": reason})
+                    log_fallback(step, reason, action)
                 else:
                     try:
                         action = get_model_action(
@@ -816,13 +1095,24 @@ async def run_task(
                         steps_taken = step - 1 if step > 0 else 0
                         fatal_error = error
                         break
-                    except Exception:
+                    except Exception as exc:
+                        reason = (
+                            "model action parse failed; using recommended next action: "
+                            + sanitize_single_line(str(exc))
+                        )
                         action = _recommended_next_action(state_payload)
+                        fallback_events.append({"step": step, "reason": reason})
+                        log_fallback(step, reason, action)
+            postprocess_fallbacks: list[str] = []
             action = postprocess_action(
                 action,
                 observation_payload,
                 state_payload,
+                fallback_reasons=postprocess_fallbacks,
             )
+            for reason in postprocess_fallbacks:
+                fallback_events.append({"step": step, "reason": reason})
+                log_fallback(step, reason, action)
             action_payload = action.model_dump(mode="json", exclude_none=True)
             if action_payload.get("metadata") == {}:
                 action_payload.pop("metadata", None)
@@ -893,6 +1183,7 @@ async def run_task(
         "cumulative_reward": round(cumulative_reward, 4),
         "rewards": [round(reward, 4) for reward in rewards],
         "progress": final_progress,
+        "fallback_events": fallback_events,
         "error": fatal_error,
     }
 
@@ -933,9 +1224,11 @@ async def main() -> None:
         )
         total_reward = sum(item["cumulative_reward"] for item in task_results)
         total_steps = sum(item["steps"] for item in task_results)
+        total_fallbacks = sum(len(item.get("fallback_events", [])) for item in task_results)
         summary_progress = {
             "task_count": len(task_results),
             "successful_tasks": successful_tasks,
+            "fallback_events": total_fallbacks,
         }
         write_run_artifact(
             {

@@ -57,8 +57,11 @@ class EnterpriseApp(str, Enum):
 
 class TicketCategory(str, Enum):
     BILLING_REFUND = "billing_refund"
+    BILLING_APPROVAL = "billing_approval"
     PRODUCT_BUG = "product_bug"
+    INCIDENT_COORDINATION = "incident_coordination"
     SECURITY_ACCOUNT_TAKEOVER = "security_account_takeover"
+    SECURITY_ESCALATION = "security_escalation"
     ACCOUNT_ACCESS = "account_access"
 
 
@@ -165,7 +168,9 @@ class CustomerAccountRecord(BaseModel):
     customer_name: str
     customer_tier: str
     plan_name: str
-    lifecycle_stage: Literal["active", "at_risk", "security_hold", "past_due"] = "active"
+    lifecycle_stage: Literal[
+        "active", "at_risk", "security_hold", "past_due", "under_review"
+    ] = "active"
     security_flags: list[str] = Field(default_factory=list)
     support_history: list[str] = Field(default_factory=list)
     open_ticket_ids: list[str] = Field(default_factory=list)
@@ -207,12 +212,28 @@ class EnterpriseAppSnapshot(BaseModel):
     target_ids: list[str] = Field(default_factory=list)
 
 
+class WorldEvent(BaseModel):
+    event_id: str
+    ticket_id: str
+    event_type: Literal[
+        "customer_follow_up",
+        "escalation_rejected",
+        "ticket_reopened",
+        "incident_update",
+        "policy_drift",
+    ]
+    trigger_step: int
+    status: Literal["pending", "applied"] = "pending"
+    message: str
+
+
 class TaskCard(BaseModel):
     task_id: str
     title: str
     difficulty: Literal["easy", "medium", "hard"]
     objective: str
     max_steps: int
+    step_penalty: float = Field(default=0.01, ge=0.0, le=0.1)
 
 
 class GradingSnapshot(BaseModel):
@@ -287,6 +308,7 @@ class SupportTriageObservation(Observation):
     accessible_apps: list[EnterpriseApp] = Field(default_factory=list)
     app_snapshots: list[EnterpriseAppSnapshot] = Field(default_factory=list)
     world_summary: list[str] = Field(default_factory=list)
+    recent_events: list[WorldEvent] = Field(default_factory=list)
     last_tool_result: dict[str, Any] | None = None
     progress: GradingSnapshot = Field(
         default_factory=lambda: GradingSnapshot(score=DEFAULT_STRICT_SCORE)
@@ -311,6 +333,8 @@ class SupportTriageState(State):
     incidents: list[IncidentRecord] = Field(default_factory=list)
     policy_articles: list[PolicyArticle] = Field(default_factory=list)
     world_summary: list[str] = Field(default_factory=list)
+    pending_events: list[WorldEvent] = Field(default_factory=list)
+    recent_events: list[WorldEvent] = Field(default_factory=list)
     last_tool_result: dict[str, Any] | None = None
     action_history: list[ActionLogEntry] = Field(default_factory=list)
     cumulative_reward: float = 0.0

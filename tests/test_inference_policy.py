@@ -39,3 +39,24 @@ def test_scripted_policy_solves_security_and_refund_hard():
 
     assert score == 0.99
     assert steps <= 7
+
+
+def test_scripted_policy_solves_enterprise_refund_investigation():
+    score, steps = _run_scripted_task("enterprise_refund_investigation")
+
+    assert score >= 0.97
+    assert steps <= 7
+
+
+def test_scripted_policy_solves_incident_coordination_outage():
+    score, steps = _run_scripted_task("incident_coordination_outage")
+
+    assert score >= 0.97
+    assert steps <= 7
+
+
+def test_scripted_policy_solves_executive_security_escalation():
+    score, steps = _run_scripted_task("executive_security_escalation")
+
+    assert score >= 0.97
+    assert steps <= 7
