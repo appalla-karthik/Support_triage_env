@@ -12,7 +12,9 @@ from support_triage_env.tasks import build_task_scenario, task_ids
 def scenario_to_examples(scenario_seed: int, scenario: Any) -> list[dict[str, Any]]:
     examples: list[dict[str, Any]] = []
     for ticket in scenario.tickets:
-        expectation = scenario.expectations[ticket.ticket_id]
+        expectation = scenario.expectations.get(ticket.ticket_id)
+        if expectation is None:
+            continue
         examples.append(
             {
                 "dataset_type": "support_triage_synthetic",
@@ -24,10 +26,15 @@ def scenario_to_examples(scenario_seed: int, scenario: Any) -> list[dict[str, An
                 "max_steps": scenario.card.max_steps,
                 "instructions": list(scenario.instructions),
                 "policy_hints": list(scenario.policy_hints),
+                "accessible_apps": [app.value for app in scenario.accessible_apps],
+                "world_summary": list(scenario.world_summary),
                 "ticket": {
                     "ticket_id": ticket.ticket_id,
                     "customer_name": ticket.customer_name,
                     "customer_tier": ticket.customer_tier,
+                    "account_id": ticket.account_id,
+                    "billing_account_id": ticket.billing_account_id,
+                    "workspace_id": ticket.workspace_id,
                     "subject": ticket.subject,
                     "messages": [message.model_dump(mode="json") for message in ticket.messages],
                 },

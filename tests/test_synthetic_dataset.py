@@ -19,4 +19,6 @@ def test_synthetic_dataset_contains_expected_fields():
     assert "task_id" in first
     assert "ticket" in first
     assert "expected" in first
+    assert "accessible_apps" in first
+    assert "world_summary" in first
     assert "reply_requirements" in first["expected"]

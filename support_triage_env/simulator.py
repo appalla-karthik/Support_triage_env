@@ -9,13 +9,18 @@ from support_triage_env.graders import BaseTaskGrader, build_graders
 from support_triage_env.models import (
     ActionLogEntry,
     ActionType,
+    EnterpriseApp,
+    EnterpriseAppSnapshot,
     GradingSnapshot,
+    IncidentRecord,
+    IncidentSeverity,
     QueueTicketView,
     SupportTriageAction,
     SupportTriageObservation,
     SupportTriageReward,
     SupportTriageState,
     TaskCard,
+    TicketCategory,
     TicketMessage,
     TicketRecord,
     TicketStatus,
@@ -70,7 +75,14 @@ class SupportTriageSimulator:
             objective=scenario.card.objective,
             max_steps=scenario.card.max_steps,
             focused_ticket_id=None,
+            accessible_apps=list(scenario.accessible_apps),
             tickets=[copy.deepcopy(ticket) for ticket in scenario.tickets],
+            customer_accounts=[copy.deepcopy(account) for account in scenario.customer_accounts],
+            billing_accounts=[copy.deepcopy(account) for account in scenario.billing_accounts],
+            incidents=[copy.deepcopy(incident) for incident in scenario.incidents],
+            policy_articles=[copy.deepcopy(article) for article in scenario.policy_articles],
+            world_summary=list(scenario.world_summary),
+            last_tool_result=None,
             action_history=[],
             cumulative_reward=0.0,
             final_score=0.01,
@@ -109,6 +121,7 @@ class SupportTriageSimulator:
         invalid_reasons: list[str] = []
         repeated_penalty = 0.0
         result_message = ""
+        tool_result: dict[str, Any] | None = None
 
         if self._state.done:
             reward = SupportTriageReward(
@@ -136,7 +149,19 @@ class SupportTriageSimulator:
         ):
             repeated_penalty = 0.03
 
-        if action.action_type != ActionType.FINISH:
+        if action.action_type in {
+            ActionType.VIEW_TICKET,
+            ActionType.CLASSIFY_TICKET,
+            ActionType.DRAFT_REPLY,
+            ActionType.REQUEST_INFO,
+            ActionType.ESCALATE_TICKET,
+            ActionType.RESOLVE_TICKET,
+            ActionType.LOOKUP_ACCOUNT,
+            ActionType.CHECK_BILLING_STATUS,
+            ActionType.SEARCH_POLICY,
+            ActionType.CREATE_INCIDENT,
+            ActionType.ADD_INTERNAL_NOTE,
+        }:
             ticket = self._find_ticket(action.ticket_id, invalid_reasons)
         else:
             ticket = None
@@ -203,6 +228,91 @@ class SupportTriageSimulator:
                 result_message = (
                     f"Resolved {ticket.ticket_id} with {action.resolution_code.value}."
                 )
+        elif action.action_type == ActionType.LOOKUP_ACCOUNT and ticket is not None:
+            account = self._find_account(ticket.account_id)
+            if account is None:
+                invalid_reasons.append("No linked CRM account was found for this ticket.")
+            else:
+                self._state.focused_ticket_id = ticket.ticket_id
+                tool_result = {
+                    "app": EnterpriseApp.CRM_WORKSPACE.value,
+                    "account_id": account.account_id,
+                    "customer_tier": account.customer_tier,
+                    "plan_name": account.plan_name,
+                    "lifecycle_stage": account.lifecycle_stage,
+                    "security_flags": list(account.security_flags),
+                    "support_history": list(account.support_history),
+                }
+                result_message = f"Reviewed CRM account {account.account_id} for {ticket.ticket_id}."
+        elif action.action_type == ActionType.CHECK_BILLING_STATUS and ticket is not None:
+            billing_account = self._find_billing_account(ticket.billing_account_id)
+            if billing_account is None:
+                invalid_reasons.append("No linked billing account was found for this ticket.")
+            else:
+                self._state.focused_ticket_id = ticket.ticket_id
+                tool_result = {
+                    "app": EnterpriseApp.BILLING_SYSTEM.value,
+                    "billing_account_id": billing_account.billing_account_id,
+                    "invoice_id": billing_account.invoice_id,
+                    "payment_status": billing_account.payment_status,
+                    "duplicate_charge_detected": billing_account.duplicate_charge_detected,
+                    "refund_eligibility": billing_account.refund_eligibility,
+                    "pending_refund_amount_usd": billing_account.pending_refund_amount_usd,
+                    "ledger_notes": list(billing_account.ledger_notes),
+                }
+                result_message = (
+                    f"Checked billing account {billing_account.billing_account_id} for {ticket.ticket_id}."
+                )
+        elif action.action_type == ActionType.SEARCH_POLICY and ticket is not None:
+            article = self._find_policy_article(action.message or "", ticket)
+            if article is None:
+                invalid_reasons.append("No relevant policy article was found for this query.")
+            else:
+                self._state.focused_ticket_id = ticket.ticket_id
+                tool_result = {
+                    "app": EnterpriseApp.POLICY_HUB.value,
+                    "article_id": article.article_id,
+                    "title": article.title,
+                    "summary": article.summary,
+                    "tags": list(article.tags),
+                }
+                result_message = f"Reviewed policy article {article.article_id} for {ticket.ticket_id}."
+        elif action.action_type == ActionType.CREATE_INCIDENT and ticket is not None:
+            if action.team is None:
+                invalid_reasons.append("create_incident requires an owning team.")
+            else:
+                incident_id = action.target_id or f"INC-{self._rng.randint(1000, 9999)}"
+                incident = IncidentRecord(
+                    incident_id=incident_id,
+                    ticket_id=ticket.ticket_id,
+                    title=action.message or ticket.subject,
+                    severity=action.severity or self._infer_incident_severity(ticket),
+                    owning_team=action.team,
+                    summary=action.message or f"Incident created from ticket {ticket.ticket_id}.",
+                )
+                self._state.incidents.append(incident)
+                ticket.linked_incident_id = incident.incident_id
+                self._state.focused_ticket_id = ticket.ticket_id
+                tool_result = {
+                    "app": EnterpriseApp.INCIDENT_TRACKER.value,
+                    "incident_id": incident.incident_id,
+                    "severity": incident.severity.value,
+                    "owning_team": incident.owning_team.value,
+                }
+                result_message = f"Created incident {incident.incident_id} for {ticket.ticket_id}."
+        elif action.action_type == ActionType.ADD_INTERNAL_NOTE and ticket is not None:
+            if not action.message:
+                invalid_reasons.append("add_internal_note requires a note message.")
+            else:
+                note_prefix = action.app.value if action.app is not None else "internal"
+                ticket.internal_notes.append(f"[{note_prefix}] {action.message}")
+                self._state.focused_ticket_id = ticket.ticket_id
+                tool_result = {
+                    "app": (action.app or EnterpriseApp.TICKETING_CONSOLE).value,
+                    "note_saved": True,
+                    "ticket_id": ticket.ticket_id,
+                }
+                result_message = f"Added internal note to {ticket.ticket_id}."
         elif action.action_type == ActionType.FINISH:
             result_message = "Episode finished by agent."
             self._state.done = True
@@ -213,14 +323,21 @@ class SupportTriageSimulator:
         if invalid_reasons:
             result_message = " ".join(invalid_reasons)
 
+        if tool_result is not None:
+            self._state.last_tool_result = tool_result
+
         self._state.action_history.append(
             ActionLogEntry(
                 step_number=self._state.step_count,
                 action_type=action.action_type,
                 ticket_id=action.ticket_id,
+                app=action.app,
+                target_id=action.target_id,
                 summary=result_message,
             )
         )
+
+        self._advance_world_state(action)
 
         grade = self._grader.grade(self._state)
         self._state.progress = grade
@@ -286,6 +403,179 @@ class SupportTriageSimulator:
         invalid_reasons.append(f"Unknown ticket_id '{ticket_id}'.")
         return None
 
+    def _find_account(self, account_id: str | None):
+        if not account_id:
+            return None
+        for account in self._state.customer_accounts:
+            if account.account_id == account_id:
+                return account
+        return None
+
+    def _find_billing_account(self, billing_account_id: str | None):
+        if not billing_account_id:
+            return None
+        for billing_account in self._state.billing_accounts:
+            if billing_account.billing_account_id == billing_account_id:
+                return billing_account
+        return None
+
+    def _find_policy_article(self, query: str, ticket: TicketRecord):
+        normalized_query = " ".join(
+            part.lower()
+            for part in [query, ticket.subject, " ".join(ticket.tags)]
+            if part
+        )
+        matches = []
+        for article in self._state.policy_articles:
+            haystack = " ".join([article.title, article.summary, article.content, *article.tags]).lower()
+            score = sum(1 for token in normalized_query.split() if token and token in haystack)
+            if score > 0:
+                matches.append((score, article))
+        if matches:
+            matches.sort(key=lambda item: item[0], reverse=True)
+            return matches[0][1]
+        return self._state.policy_articles[0] if self._state.policy_articles else None
+
+    def _infer_incident_severity(self, ticket: TicketRecord) -> IncidentSeverity:
+        text = f"{ticket.subject} {' '.join(message.content for message in ticket.messages)}".lower()
+        if any(token in text for token in ["urgent", "ceo", "compromised", "security"]):
+            return IncidentSeverity.CRITICAL
+        if any(token in text for token in ["outage", "500 error", "502 error", "blocked"]):
+            return IncidentSeverity.HIGH
+        return IncidentSeverity.MEDIUM
+
+    def _advance_world_state(self, action: SupportTriageAction) -> None:
+        acted_ticket_id = action.ticket_id
+
+        for ticket in self._state.tickets:
+            if ticket.current_status in {TicketStatus.RESOLVED, TicketStatus.ESCALATED}:
+                continue
+            if ticket.ticket_id == acted_ticket_id:
+                continue
+            if ticket.sla_hours_remaining is not None:
+                ticket.sla_hours_remaining -= 1
+
+        for incident in self._state.incidents:
+            linked_ticket = next(
+                (
+                    ticket
+                    for ticket in self._state.tickets
+                    if ticket.ticket_id == incident.ticket_id
+                    or ticket.linked_incident_id == incident.incident_id
+                ),
+                None,
+            )
+            if linked_ticket is None:
+                continue
+            if linked_ticket.current_status == TicketStatus.RESOLVED:
+                incident.status = "resolved"
+            elif linked_ticket.current_status == TicketStatus.ESCALATED:
+                incident.status = "investigating"
+            elif linked_ticket.current_status in {
+                TicketStatus.IN_PROGRESS,
+                TicketStatus.WAITING_FOR_CUSTOMER,
+            }:
+                incident.status = "open"
+
+        for account in self._state.customer_accounts:
+            related_tickets = [
+                ticket
+                for ticket in self._state.tickets
+                if ticket.ticket_id in account.open_ticket_ids
+            ]
+            active_tickets = [
+                ticket
+                for ticket in related_tickets
+                if ticket.current_status
+                not in {TicketStatus.RESOLVED, TicketStatus.ESCALATED}
+            ]
+            if any(
+                self._is_security_ticket(ticket)
+                and ticket.sla_hours_remaining is not None
+                and ticket.sla_hours_remaining <= 1
+                for ticket in active_tickets
+            ):
+                account.lifecycle_stage = "security_hold"
+            elif any(
+                self._is_product_incident_ticket(ticket)
+                or (
+                    ticket.sla_hours_remaining is not None
+                    and ticket.sla_hours_remaining <= 2
+                )
+                for ticket in active_tickets
+            ):
+                account.lifecycle_stage = "at_risk"
+            elif any(
+                ticket.current_status == TicketStatus.ESCALATED for ticket in related_tickets
+            ):
+                account.lifecycle_stage = "under_review"
+            else:
+                account.lifecycle_stage = "active"
+
+        self._refresh_world_summary()
+
+    def _is_security_ticket(self, ticket: TicketRecord) -> bool:
+        text = " ".join([ticket.subject, *ticket.tags]).lower()
+        return (
+            ticket.current_category == TicketCategory.SECURITY_ACCOUNT_TAKEOVER
+            or "security" in text
+            or "comprom" in text
+            or "mfa" in text
+            or "executive" in text
+        )
+
+    def _is_product_incident_ticket(self, ticket: TicketRecord) -> bool:
+        text = " ".join([ticket.subject, *ticket.tags]).lower()
+        return (
+            ticket.current_category == TicketCategory.PRODUCT_BUG
+            or "outage" in text
+            or "incident" in text
+            or "export" in text
+            or "500" in text
+            or "502" in text
+        )
+
+    def _refresh_world_summary(self) -> None:
+        unresolved = [
+            ticket
+            for ticket in self._state.tickets
+            if ticket.current_status not in {TicketStatus.RESOLVED, TicketStatus.ESCALATED}
+        ]
+        escalated = [
+            ticket for ticket in self._state.tickets if ticket.current_status == TicketStatus.ESCALATED
+        ]
+        breached = [
+            ticket
+            for ticket in unresolved
+            if ticket.sla_hours_remaining is not None and ticket.sla_hours_remaining <= 0
+        ]
+        at_risk_accounts = [
+            account
+            for account in self._state.customer_accounts
+            if account.lifecycle_stage in {"at_risk", "security_hold"}
+        ]
+        active_incidents = [
+            incident
+            for incident in self._state.incidents
+            if incident.status != "resolved"
+        ]
+
+        summary = [
+            (
+                f"Queue status: {len(unresolved)} active, {len(escalated)} escalated, "
+                f"{sum(1 for ticket in self._state.tickets if ticket.current_status == TicketStatus.RESOLVED)} resolved."
+            ),
+            (
+                f"SLA watchlist: {len(breached)} breached, "
+                f"{sum(1 for ticket in unresolved if ticket.sla_hours_remaining is not None and ticket.sla_hours_remaining <= 2)} near breach."
+            ),
+            (
+                f"Enterprise systems: {len(active_incidents)} active incidents, "
+                f"{len(at_risk_accounts)} accounts in at-risk or security-hold states."
+            ),
+        ]
+        self._state.world_summary = summary
+
     def _build_observation(
         self,
         scenario: TaskScenario,
@@ -311,6 +601,53 @@ class SupportTriageSimulator:
             ],
             focused_ticket=focused_ticket,
             last_action_result=last_action_result,
+            accessible_apps=list(self._state.accessible_apps),
+            app_snapshots=self._build_app_snapshots(),
+            world_summary=list(self._state.world_summary),
+            last_tool_result=copy.deepcopy(self._state.last_tool_result),
             progress=self._state.progress.model_copy(deep=True),
             available_actions=[action.value for action in ActionType],
         )
+
+    def _build_app_snapshots(self) -> list[EnterpriseAppSnapshot]:
+        snapshots = [
+            EnterpriseAppSnapshot(
+                app=EnterpriseApp.TICKETING_CONSOLE,
+                summary=f"{len(self._state.tickets)} tickets in the active queue.",
+                target_ids=[ticket.ticket_id for ticket in self._state.tickets],
+            ),
+            EnterpriseAppSnapshot(
+                app=EnterpriseApp.CRM_WORKSPACE,
+                summary=f"{len(self._state.customer_accounts)} customer accounts available for lookup.",
+                target_ids=[account.account_id for account in self._state.customer_accounts],
+            ),
+            EnterpriseAppSnapshot(
+                app=EnterpriseApp.BILLING_SYSTEM,
+                summary=f"{len(self._state.billing_accounts)} billing ledgers available.",
+                target_ids=[account.billing_account_id for account in self._state.billing_accounts],
+            ),
+            EnterpriseAppSnapshot(
+                app=EnterpriseApp.INCIDENT_TRACKER,
+                summary=f"{len(self._state.incidents)} incidents currently open or tracked.",
+                target_ids=[incident.incident_id for incident in self._state.incidents],
+            ),
+            EnterpriseAppSnapshot(
+                app=EnterpriseApp.TRUST_SAFETY_CONSOLE,
+                summary=(
+                    f"{sum(1 for ticket in self._state.tickets if 'security' in ' '.join(ticket.tags).lower())} "
+                    "tickets currently have security-sensitive context."
+                ),
+                target_ids=[
+                    ticket.ticket_id
+                    for ticket in self._state.tickets
+                    if "security" in " ".join(ticket.tags).lower()
+                ],
+            ),
+            EnterpriseAppSnapshot(
+                app=EnterpriseApp.POLICY_HUB,
+                summary=f"{len(self._state.policy_articles)} policy articles searchable.",
+                target_ids=[article.article_id for article in self._state.policy_articles],
+            ),
+        ]
+        accessible = set(self._state.accessible_apps)
+        return [snapshot for snapshot in snapshots if snapshot.app in accessible]

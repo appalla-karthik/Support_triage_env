@@ -1,5 +1,7 @@
 from support_triage_env.models import (
     ActionType,
+    EnterpriseApp,
+    IncidentSeverity,
     ResolutionCode,
     SupportTriageAction,
     SupportTriageObservation,
@@ -20,6 +22,8 @@ except ModuleNotFoundError:
 
 __all__ = [
     "ActionType",
+    "EnterpriseApp",
+    "IncidentSeverity",
     "ResolutionCode",
     "SupportTriageAction",
     "SupportTriageEnv",

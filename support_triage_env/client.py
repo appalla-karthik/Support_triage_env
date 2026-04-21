@@ -7,7 +7,12 @@ from openenv.core.client_types import StepResult
 
 from support_triage_env.models import (
     ActionLogEntry,
+    BillingAccountRecord,
+    CustomerAccountRecord,
+    EnterpriseAppSnapshot,
     GradingSnapshot,
+    IncidentRecord,
+    PolicyArticle,
     QueueTicketView,
     SupportTriageAction,
     SupportTriageObservation,
@@ -40,6 +45,12 @@ class SupportTriageEnv(
                 else None
             ),
             last_action_result=obs_data.get("last_action_result", ""),
+            accessible_apps=obs_data.get("accessible_apps", []),
+            app_snapshots=[
+                EnterpriseAppSnapshot(**item) for item in obs_data.get("app_snapshots", [])
+            ],
+            world_summary=obs_data.get("world_summary", []),
+            last_tool_result=obs_data.get("last_tool_result"),
             progress=GradingSnapshot(**obs_data.get("progress", {"score": 0.01})),
             available_actions=obs_data.get("available_actions", []),
             metadata=obs_data.get("metadata", {}),
@@ -59,7 +70,20 @@ class SupportTriageEnv(
             objective=payload.get("objective", ""),
             max_steps=payload.get("max_steps", 0),
             focused_ticket_id=payload.get("focused_ticket_id"),
+            accessible_apps=payload.get("accessible_apps", []),
             tickets=[TicketRecord(**ticket) for ticket in payload.get("tickets", [])],
+            customer_accounts=[
+                CustomerAccountRecord(**item) for item in payload.get("customer_accounts", [])
+            ],
+            billing_accounts=[
+                BillingAccountRecord(**item) for item in payload.get("billing_accounts", [])
+            ],
+            incidents=[IncidentRecord(**item) for item in payload.get("incidents", [])],
+            policy_articles=[
+                PolicyArticle(**item) for item in payload.get("policy_articles", [])
+            ],
+            world_summary=payload.get("world_summary", []),
+            last_tool_result=payload.get("last_tool_result"),
             action_history=[
                 ActionLogEntry(**entry) for entry in payload.get("action_history", [])
             ],

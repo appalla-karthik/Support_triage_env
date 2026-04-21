@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from typing import Any
 from enum import Enum
 from typing import Literal
 
@@ -37,7 +38,21 @@ class ActionType(str, Enum):
     REQUEST_INFO = "request_info"
     ESCALATE_TICKET = "escalate_ticket"
     RESOLVE_TICKET = "resolve_ticket"
+    LOOKUP_ACCOUNT = "lookup_account"
+    CHECK_BILLING_STATUS = "check_billing_status"
+    SEARCH_POLICY = "search_policy"
+    CREATE_INCIDENT = "create_incident"
+    ADD_INTERNAL_NOTE = "add_internal_note"
     FINISH = "finish"
+
+
+class EnterpriseApp(str, Enum):
+    TICKETING_CONSOLE = "ticketing_console"
+    CRM_WORKSPACE = "crm_workspace"
+    BILLING_SYSTEM = "billing_system"
+    INCIDENT_TRACKER = "incident_tracker"
+    TRUST_SAFETY_CONSOLE = "trust_safety_console"
+    POLICY_HUB = "policy_hub"
 
 
 class TicketCategory(str, Enum):
@@ -76,6 +91,13 @@ class ResolutionCode(str, Enum):
     NO_ACTION_NEEDED = "no_action_needed"
 
 
+class IncidentSeverity(str, Enum):
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    CRITICAL = "critical"
+
+
 class TicketMessage(BaseModel):
     role: Literal["customer", "agent", "internal"] = Field(
         ..., description="Who authored the message."
@@ -90,6 +112,7 @@ class QueueTicketView(BaseModel):
     subject: str
     latest_customer_message: str
     current_status: TicketStatus
+    sla_hours_remaining: int | None = None
     current_category: TicketCategory | None = None
     current_priority: TicketPriority | None = None
     assigned_team: TicketTeam | None = None
@@ -100,14 +123,20 @@ class TicketRecord(BaseModel):
     customer_name: str
     customer_tier: str
     subject: str
+    account_id: str | None = None
+    billing_account_id: str | None = None
+    workspace_id: str | None = None
     messages: list[TicketMessage] = Field(default_factory=list)
     current_status: TicketStatus = TicketStatus.OPEN
+    sla_hours_remaining: int | None = None
     current_category: TicketCategory | None = None
     current_priority: TicketPriority | None = None
     assigned_team: TicketTeam | None = None
     outbound_messages: list[str] = Field(default_factory=list)
     internal_notes: list[str] = Field(default_factory=list)
     requested_information: list[str] = Field(default_factory=list)
+    tags: list[str] = Field(default_factory=list)
+    linked_incident_id: str | None = None
     resolution_code: ResolutionCode | None = None
 
     def to_queue_view(self) -> QueueTicketView:
@@ -123,10 +152,59 @@ class TicketRecord(BaseModel):
             subject=self.subject,
             latest_customer_message=latest_customer_message,
             current_status=self.current_status,
+            sla_hours_remaining=self.sla_hours_remaining,
             current_category=self.current_category,
             current_priority=self.current_priority,
             assigned_team=self.assigned_team,
         )
+
+
+class CustomerAccountRecord(BaseModel):
+    account_id: str
+    workspace_id: str | None = None
+    customer_name: str
+    customer_tier: str
+    plan_name: str
+    lifecycle_stage: Literal["active", "at_risk", "security_hold", "past_due"] = "active"
+    security_flags: list[str] = Field(default_factory=list)
+    support_history: list[str] = Field(default_factory=list)
+    open_ticket_ids: list[str] = Field(default_factory=list)
+
+
+class BillingAccountRecord(BaseModel):
+    billing_account_id: str
+    account_id: str
+    invoice_id: str | None = None
+    payment_status: Literal["paid", "due", "refunded", "pending_review"] = "paid"
+    duplicate_charge_detected: bool = False
+    refund_eligibility: Literal["eligible", "needs_review", "blocked"] = "eligible"
+    pending_refund_amount_usd: float = 0.0
+    ledger_notes: list[str] = Field(default_factory=list)
+
+
+class IncidentRecord(BaseModel):
+    incident_id: str
+    ticket_id: str
+    title: str
+    severity: IncidentSeverity
+    owning_team: TicketTeam
+    status: Literal["open", "investigating", "mitigated", "resolved"] = "open"
+    summary: str = ""
+
+
+class PolicyArticle(BaseModel):
+    article_id: str
+    title: str
+    app: EnterpriseApp = EnterpriseApp.POLICY_HUB
+    summary: str
+    content: str
+    tags: list[str] = Field(default_factory=list)
+
+
+class EnterpriseAppSnapshot(BaseModel):
+    app: EnterpriseApp
+    summary: str
+    target_ids: list[str] = Field(default_factory=list)
 
 
 class TaskCard(BaseModel):
@@ -173,6 +251,8 @@ class ActionLogEntry(BaseModel):
     step_number: int
     action_type: ActionType
     ticket_id: str | None = None
+    app: EnterpriseApp | None = None
+    target_id: str | None = None
     summary: str
 
 
@@ -184,10 +264,14 @@ class SupportTriageAction(Action):
     category: TicketCategory | None = None
     priority: TicketPriority | None = None
     team: TicketTeam | None = None
+    app: EnterpriseApp | None = None
+    target_id: str | None = None
     message: str | None = Field(
         default=None,
         description="Reply text, internal escalation note, or information request.",
     )
+    severity: IncidentSeverity | None = None
+    details: dict[str, Any] | None = None
     resolution_code: ResolutionCode | None = None
 
 
@@ -200,6 +284,10 @@ class SupportTriageObservation(Observation):
     queue: list[QueueTicketView] = Field(default_factory=list)
     focused_ticket: TicketRecord | None = None
     last_action_result: str = ""
+    accessible_apps: list[EnterpriseApp] = Field(default_factory=list)
+    app_snapshots: list[EnterpriseAppSnapshot] = Field(default_factory=list)
+    world_summary: list[str] = Field(default_factory=list)
+    last_tool_result: dict[str, Any] | None = None
     progress: GradingSnapshot = Field(
         default_factory=lambda: GradingSnapshot(score=DEFAULT_STRICT_SCORE)
     )
@@ -216,7 +304,14 @@ class SupportTriageState(State):
     objective: str = ""
     max_steps: int = 0
     focused_ticket_id: str | None = None
+    accessible_apps: list[EnterpriseApp] = Field(default_factory=list)
     tickets: list[TicketRecord] = Field(default_factory=list)
+    customer_accounts: list[CustomerAccountRecord] = Field(default_factory=list)
+    billing_accounts: list[BillingAccountRecord] = Field(default_factory=list)
+    incidents: list[IncidentRecord] = Field(default_factory=list)
+    policy_articles: list[PolicyArticle] = Field(default_factory=list)
+    world_summary: list[str] = Field(default_factory=list)
+    last_tool_result: dict[str, Any] | None = None
     action_history: list[ActionLogEntry] = Field(default_factory=list)
     cumulative_reward: float = 0.0
     final_score: float = DEFAULT_STRICT_SCORE
