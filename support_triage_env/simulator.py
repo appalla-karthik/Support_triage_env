@@ -33,6 +33,20 @@ def _join_text(items: list[str]) -> str:
     return "\n".join(items)
 
 
+_REQUIRED_TOOL_APPS: dict[ActionType, EnterpriseApp] = {
+    ActionType.LOOKUP_ACCOUNT: EnterpriseApp.CRM_WORKSPACE,
+    ActionType.CHECK_BILLING_STATUS: EnterpriseApp.BILLING_SYSTEM,
+    ActionType.SEARCH_POLICY: EnterpriseApp.POLICY_HUB,
+    ActionType.CREATE_INCIDENT: EnterpriseApp.INCIDENT_TRACKER,
+}
+
+_ALLOWED_NOTE_APPS = {
+    EnterpriseApp.TICKETING_CONSOLE,
+    EnterpriseApp.TRUST_SAFETY_CONSOLE,
+    EnterpriseApp.INCIDENT_TRACKER,
+}
+
+
 class SupportTriageSimulator:
     """Local Gym-style simulator with step/reset/state APIs."""
 
@@ -175,7 +189,11 @@ class SupportTriageSimulator:
         else:
             ticket = None
 
-        if action.action_type == ActionType.VIEW_TICKET and ticket is not None:
+        self._validate_action_app(action, invalid_reasons)
+
+        if invalid_reasons:
+            result_message = " ".join(invalid_reasons)
+        elif action.action_type == ActionType.VIEW_TICKET and ticket is not None:
             self._state.focused_ticket_id = ticket.ticket_id
             result_message = f"Opened {ticket.ticket_id}: {ticket.subject}"
         elif action.action_type == ActionType.CLASSIFY_TICKET and ticket is not None:
@@ -326,10 +344,10 @@ class SupportTriageSimulator:
             result_message = "Episode finished by agent."
             self._state.done = True
         else:
-            if not invalid_reasons:
-                invalid_reasons.append(f"Unsupported action {action.action_type.value}.")
+            invalid_reasons.append(f"Unsupported action {action.action_type.value}.")
 
-        self._maybe_schedule_delayed_outcomes(action, ticket)
+        if not invalid_reasons:
+            self._maybe_schedule_delayed_outcomes(action, ticket)
 
         if invalid_reasons:
             result_message = " ".join(invalid_reasons)
@@ -403,6 +421,42 @@ class SupportTriageSimulator:
 
     def state(self) -> SupportTriageState:
         return self._state.model_copy(deep=True)
+
+    def _validate_action_app(
+        self,
+        action: SupportTriageAction,
+        invalid_reasons: list[str],
+    ) -> None:
+        if action.app is not None and action.app not in self._state.accessible_apps:
+            invalid_reasons.append(
+                f"{action.app.value} is not available in this task environment."
+            )
+            return
+
+        required_app = _REQUIRED_TOOL_APPS.get(action.action_type)
+        if required_app is not None:
+            if action.app is None:
+                invalid_reasons.append(
+                    f"{action.action_type.value} requires app={required_app.value}."
+                )
+            elif action.app != required_app:
+                invalid_reasons.append(
+                    f"{action.action_type.value} must be run in {required_app.value}, not {action.app.value}."
+                )
+            return
+
+        if action.action_type == ActionType.ADD_INTERNAL_NOTE:
+            if action.app is None:
+                invalid_reasons.append(
+                    "add_internal_note requires an app context such as ticketing_console or trust_safety_console."
+                )
+            elif action.app not in _ALLOWED_NOTE_APPS:
+                allowed_apps = ", ".join(
+                    app.value for app in sorted(_ALLOWED_NOTE_APPS, key=lambda app: app.value)
+                )
+                invalid_reasons.append(
+                    f"add_internal_note only supports these apps: {allowed_apps}."
+                )
 
     def _find_ticket(
         self, ticket_id: str | None, invalid_reasons: list[str]

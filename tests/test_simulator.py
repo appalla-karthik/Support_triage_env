@@ -553,3 +553,53 @@ def test_mixed_queue_command_center_supports_multi_ticket_progression():
 
     assert env.state().progress.penalties.get("outage_priority_miss", 0.0) >= 0.08
 
+
+def test_tool_actions_require_the_correct_enterprise_app():
+    env = SupportTriageSimulator()
+    env.reset(task_id="enterprise_refund_investigation", seed=7)
+    ticket_id = env.state().tickets[0].ticket_id
+
+    observation, reward, _, _ = env.step(
+        SupportTriageAction(
+            action_type=ActionType.LOOKUP_ACCOUNT,
+            ticket_id=ticket_id,
+            app=EnterpriseApp.BILLING_SYSTEM,
+        )
+    )
+
+    assert "must be run in crm_workspace" in observation.last_action_result
+    assert reward.penalties["invalid_action"] == 0.07
+    assert env.state().last_tool_result is None
+
+
+def test_invalid_tool_action_does_not_trigger_downstream_event():
+    env = SupportTriageSimulator()
+    env.reset(task_id="followup_reprioritization_queue", seed=7)
+    outage_ticket = next(
+        ticket for ticket in env.state().tickets if "responds-fast" in ticket.tags
+    )
+
+    env.step(
+        SupportTriageAction(
+            action_type=ActionType.ADD_INTERNAL_NOTE,
+            ticket_id=outage_ticket.ticket_id,
+            app=EnterpriseApp.BILLING_SYSTEM,
+            message="Trying to use the wrong system for a note.",
+        )
+    )
+
+    assert env.state().pending_events == []
+    assert env.state().last_tool_result is None
+
+
+def test_advanced_graders_expose_the_correct_expected_category_labels():
+    refund_env = SupportTriageSimulator()
+    refund_observation = refund_env.reset(task_id="refund_reopen_review", seed=7)
+    followup_env = SupportTriageSimulator()
+    followup_observation = followup_env.reset(
+        task_id="followup_reprioritization_queue", seed=7
+    )
+
+    assert "Set category to billing_approval" in refund_observation.progress.outstanding_requirements
+    assert "Set category to incident_coordination" in followup_observation.progress.outstanding_requirements
+

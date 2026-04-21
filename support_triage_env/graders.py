@@ -121,6 +121,24 @@ def _strict_score(value: float) -> float:
     return round(min(1.0 - _SCORE_EPSILON, max(_SCORE_EPSILON, value)), 4)
 
 
+def _require_category(expectation) -> str:
+    return f"Set category to {expectation.category.value}"
+
+
+def _require_priority(expectation) -> str:
+    return f"Set priority to {expectation.priority.value}"
+
+
+def _require_team(expectation) -> str:
+    return f"Assign to {expectation.team.value}"
+
+
+def _require_resolution(expectation) -> str:
+    if expectation.resolution_code is None:
+        return "Reach the correct terminal state"
+    return f"Resolve with {expectation.resolution_code.value}"
+
+
 def _reply_score(
     ticket: TicketRecord, labels_and_phrases: list[tuple[str, list[str]]]
 ) -> tuple[float, list[str], list[str]]:
@@ -701,19 +719,19 @@ class EnterpriseRefundInvestigationGrader(BaseTaskGrader):
             components["correct_category"] = 0.10
             satisfied.append("Classified the enterprise case correctly")
         else:
-            outstanding.append("Set category to billing_refund")
+            outstanding.append(_require_category(expectation))
 
         if ticket.current_priority == expectation.priority:
             components["correct_priority"] = 0.10
             satisfied.append("Marked the case high priority")
         else:
-            outstanding.append("Set priority to high")
+            outstanding.append(_require_priority(expectation))
 
         if ticket.assigned_team == expectation.team:
             components["correct_team"] = 0.10
             satisfied.append("Assigned billing_ops")
         else:
-            outstanding.append("Assign to billing_ops")
+            outstanding.append(_require_team(expectation))
 
         ratio, reply_hits, reply_missing = _reply_score(
             ticket,
@@ -732,7 +750,7 @@ class EnterpriseRefundInvestigationGrader(BaseTaskGrader):
             components["resolution"] = 0.15
             satisfied.append("Resolved with refund_submitted")
         else:
-            outstanding.append("Resolve with refund_submitted")
+            outstanding.append(_require_resolution(expectation))
 
         outbound = _all_outbound_text(ticket)
         if _contains_any(outbound, expectation.forbidden_phrases):
@@ -782,21 +800,21 @@ class IncidentCoordinationOutageGrader(BaseTaskGrader):
 
         if ticket.current_category == expectation.category:
             components["correct_category"] = 0.10
-            satisfied.append("Classified outage as product_bug")
+            satisfied.append(f"Classified outage as {expectation.category.value}")
         else:
-            outstanding.append("Set category to product_bug")
+            outstanding.append(_require_category(expectation))
 
         if ticket.current_priority == expectation.priority:
             components["correct_priority"] = 0.08
             satisfied.append("Marked outage high priority")
         else:
-            outstanding.append("Set priority to high")
+            outstanding.append(_require_priority(expectation))
 
         if ticket.assigned_team == expectation.team:
             components["correct_team"] = 0.08
             satisfied.append("Assigned engineering")
         else:
-            outstanding.append("Assign the outage to engineering")
+            outstanding.append(_require_team(expectation))
 
         ratio, reply_hits, reply_missing = _reply_score(
             ticket,
@@ -889,19 +907,19 @@ class ExecutiveSecurityEscalationGrader(BaseTaskGrader):
             components["correct_category"] = 0.10
             satisfied.append("Classified security incident correctly")
         else:
-            outstanding.append("Set category to security_account_takeover")
+            outstanding.append(_require_category(expectation))
 
         if security_ticket.current_priority == expectation.priority:
             components["correct_priority"] = 0.10
             satisfied.append("Marked the security case urgent")
         else:
-            outstanding.append("Set priority to urgent")
+            outstanding.append(_require_priority(expectation))
 
         if security_ticket.assigned_team == expectation.team:
             components["correct_team"] = 0.10
             satisfied.append("Assigned trust_safety")
         else:
-            outstanding.append("Assign the case to trust_safety")
+            outstanding.append(_require_team(expectation))
 
         ratio, reply_hits, reply_missing = _reply_score(
             security_ticket,
@@ -974,17 +992,17 @@ class EscalationRejectionRecoveryGrader(BaseTaskGrader):
         if ticket.current_category == expectation.category:
             components["correct_category"] = 0.08
         else:
-            outstanding.append("Set category to product_bug")
+            outstanding.append(_require_category(expectation))
 
         if ticket.current_priority == expectation.priority:
             components["correct_priority"] = 0.08
         else:
-            outstanding.append("Set priority to urgent")
+            outstanding.append(_require_priority(expectation))
 
         if ticket.assigned_team == expectation.team:
             components["correct_team"] = 0.08
         else:
-            outstanding.append("Assign the outage to engineering")
+            outstanding.append(_require_team(expectation))
 
         ratio, reply_hits, reply_missing = _reply_score(
             ticket,
@@ -1061,17 +1079,17 @@ class RefundReopenReviewGrader(BaseTaskGrader):
         if ticket.current_category == expectation.category:
             components["correct_category"] = 0.08
         else:
-            outstanding.append("Set category to billing_refund")
+            outstanding.append(_require_category(expectation))
 
         if ticket.current_priority == expectation.priority:
             components["correct_priority"] = 0.08
         else:
-            outstanding.append("Set priority to high")
+            outstanding.append(_require_priority(expectation))
 
         if ticket.assigned_team == expectation.team:
             components["correct_team"] = 0.08
         else:
-            outstanding.append("Assign to billing_ops")
+            outstanding.append(_require_team(expectation))
 
         ratio, reply_hits, reply_missing = _reply_score(
             ticket,
@@ -1090,7 +1108,7 @@ class RefundReopenReviewGrader(BaseTaskGrader):
             components["resolution"] = 0.14
             satisfied.append("Resolved with the correct refund outcome")
         else:
-            outstanding.append("Resolve with refund_submitted")
+            outstanding.append(_require_resolution(expectation))
 
         if any(
             event.event_type == "ticket_reopened" and event.status == "applied"
@@ -1272,17 +1290,17 @@ class FollowupReprioritizationQueueGrader(BaseTaskGrader):
         if ticket.current_category == expectation.category:
             components["correct_category"] = 0.08
         else:
-            outstanding.append("Set category to product_bug")
+            outstanding.append(_require_category(expectation))
 
         if ticket.current_priority == expectation.priority:
             components["correct_priority"] = 0.08
         else:
-            outstanding.append("Set priority to high")
+            outstanding.append(_require_priority(expectation))
 
         if ticket.assigned_team == expectation.team:
             components["correct_team"] = 0.08
         else:
-            outstanding.append("Assign the outage to engineering")
+            outstanding.append(_require_team(expectation))
 
         ratio, _, reply_missing = _reply_score(
             ticket,
