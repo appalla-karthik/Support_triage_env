@@ -517,6 +517,37 @@ async def root() -> str:
       .button-row.action-row button {
         min-width: 124px;
       }
+      .banner {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin: 14px 0 0;
+        padding: 12px 14px;
+        border-radius: 18px;
+        border: 1px solid rgba(153, 103, 48, 0.22);
+        background: rgba(154, 103, 48, 0.08);
+        color: #3d2b13;
+      }
+      .banner strong {
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.45px;
+        color: rgba(61, 43, 19, 0.78);
+      }
+      .banner span {
+        font-size: 13px;
+        line-height: 1.55;
+        color: rgba(61, 43, 19, 0.92);
+      }
+      .banner .hint {
+        margin-left: auto;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.25px;
+        color: rgba(61, 43, 19, 0.72);
+        white-space: nowrap;
+      }
       .service-grid {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -591,6 +622,314 @@ async def root() -> str:
         font-size: 13px;
         text-transform: uppercase;
         letter-spacing: 0.45px;
+      }
+      .conversation-panel {
+        position: relative;
+        margin: 0 0 16px;
+        padding: 24px 24px 22px;
+        background:
+          radial-gradient(circle at top left, rgba(108, 130, 160, 0.22), transparent 28%),
+          radial-gradient(circle at right center, rgba(66, 82, 108, 0.18), transparent 32%),
+          linear-gradient(180deg, #1f2733 0%, #171e29 100%);
+        border: 1px solid rgba(23, 30, 41, 0.26);
+        color: #f6f5f1;
+        overflow: hidden;
+        box-shadow: 0 18px 38px rgba(18, 24, 33, 0.14);
+      }
+      .conversation-panel::before {
+        content: "";
+        position: absolute;
+        inset: 0 auto auto 0;
+        width: 100%;
+        height: 1px;
+        background: linear-gradient(90deg, rgba(255, 255, 255, 0.02), rgba(151, 182, 220, 0.34), rgba(255, 255, 255, 0.02));
+      }
+      .conversation-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        margin-bottom: 20px;
+      }
+      .conversation-controls {
+        display: grid;
+        gap: 10px;
+        justify-items: end;
+        min-width: 260px;
+      }
+      .conversation-control-row {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+      }
+      .conversation-label {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.45px;
+        text-transform: uppercase;
+        color: rgba(200, 213, 228, 0.78);
+      }
+      .conversation-select {
+        appearance: none;
+        border-radius: 999px;
+        padding: 9px 34px 9px 14px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(255, 255, 255, 0.06);
+        color: rgba(246, 245, 241, 0.92);
+        color-scheme: dark;
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.15px;
+        cursor: pointer;
+        max-width: 340px;
+      }
+      .conversation-select:disabled {
+        /* Keep our styling even when disabled (some browsers wash selects to white/grey). */
+        opacity: 1;
+        background: rgba(0, 0, 0, 0.18);
+        color: rgba(246, 245, 241, 0.72);
+        -webkit-text-fill-color: rgba(246, 245, 241, 0.72);
+        cursor: not-allowed;
+      }
+      .conversation-select option {
+        background: #121825;
+        color: rgba(246, 245, 241, 0.92);
+      }
+      .conversation-select-wrap {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+      }
+      .conversation-select-wrap::after {
+        /* CSS triangle to avoid unicode/encoding issues in some terminals/editors. */
+        content: "";
+        position: absolute;
+        right: 14px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 0;
+        height: 0;
+        border-left: 5px solid transparent;
+        border-right: 5px solid transparent;
+        border-top: 6px solid rgba(246, 245, 241, 0.7);
+        pointer-events: none;
+      }
+      .follow-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: rgba(255, 255, 255, 0.05);
+        color: rgba(246, 245, 241, 0.88);
+        font-size: 12px;
+        font-weight: 600;
+        user-select: none;
+      }
+      .follow-toggle input {
+        accent-color: #cfe0f4;
+      }
+      .conversation-header .section-kicker {
+        color: rgba(200, 213, 228, 0.74);
+      }
+      .conversation-chip {
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 999px;
+        padding: 9px 14px;
+        background: rgba(255, 255, 255, 0.06);
+        color: rgba(246, 245, 241, 0.9);
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.2px;
+      }
+      .conversation-stream {
+        display: grid;
+        gap: 14px;
+      }
+      .message-row {
+        display: grid;
+        grid-template-columns: 48px minmax(0, 1fr);
+        gap: 16px;
+        align-items: start;
+      }
+      .message-row.agent {
+        grid-template-columns: minmax(0, 1fr) 48px;
+      }
+      .message-row.agent .message-stack {
+        display: grid;
+        justify-items: end;
+      }
+      .message-row.agent .message-meta {
+        justify-content: flex-end;
+      }
+      .message-row.agent .chat-bubble {
+        background:
+          linear-gradient(180deg, rgba(244, 247, 251, 0.98), rgba(233, 239, 246, 0.98));
+        border-color: rgba(143, 162, 186, 0.34);
+        box-shadow:
+          0 14px 30px rgba(8, 12, 20, 0.1),
+          inset 0 1px 0 rgba(255, 255, 255, 0.86);
+      }
+      .message-row.agent .chat-bubble p {
+        color: #233043;
+      }
+      .message-row.agent .message-avatar {
+        background: linear-gradient(180deg, rgba(133, 158, 189, 0.26), rgba(102, 122, 149, 0.18));
+        color: #eaf1f8;
+      }
+      .message-row.agent .message-role {
+        color: rgba(220, 229, 239, 0.82);
+      }
+      .message-row.agent .message-ticket {
+        color: rgba(177, 193, 212, 0.88);
+      }
+      .message-avatar {
+        width: 48px;
+        height: 48px;
+        border-radius: 16px;
+        display: grid;
+        place-items: center;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.04));
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        color: #f6f5f1;
+        font-size: 15px;
+        font-weight: 700;
+        letter-spacing: 0.4px;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+      }
+      .message-meta {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 10px;
+      }
+      .message-role {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.55px;
+        text-transform: uppercase;
+        color: rgba(223, 231, 241, 0.92);
+      }
+      .message-ticket {
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.3px;
+        color: rgba(166, 184, 204, 0.9);
+      }
+      .chat-bubble {
+        width: fit-content;
+        max-width: min(920px, 100%);
+        padding: 18px 20px;
+        border-radius: 20px;
+        border: 1px solid rgba(114, 142, 178, 0.26);
+        background:
+          linear-gradient(180deg, rgba(30, 43, 64, 0.96), rgba(24, 35, 54, 0.9));
+        box-shadow:
+          0 14px 30px rgba(8, 12, 20, 0.16),
+          inset 0 1px 0 rgba(255, 255, 255, 0.05);
+      }
+      .chat-bubble p {
+        margin: 0;
+        color: #f6f5f1;
+        font-size: 16px;
+        line-height: 1.72;
+        letter-spacing: -0.1px;
+      }
+      .chat-bubble.empty {
+        border-style: dashed;
+        border-color: rgba(255, 255, 255, 0.14);
+        background: rgba(255, 255, 255, 0.04);
+        color: rgba(246, 245, 241, 0.72);
+      }
+      .chat-bubble.empty p {
+        color: rgba(246, 245, 241, 0.72);
+      }
+      .conversation-caption {
+        margin: 0 0 4px;
+        color: rgba(200, 213, 228, 0.72);
+        font-size: 13px;
+        line-height: 1.7;
+        max-width: 760px;
+      }
+      .activity-panel {
+        margin-top: 18px;
+        padding-top: 18px;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      .activity-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 12px;
+      }
+      .activity-head strong {
+        color: rgba(243, 246, 250, 0.94);
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      .activity-head span {
+        color: rgba(187, 201, 218, 0.84);
+        font-size: 12px;
+      }
+      .activity-list {
+        display: grid;
+        gap: 10px;
+        max-height: 420px;
+        overflow: auto;
+        padding-right: 6px;
+        overscroll-behavior: contain;
+      }
+      .activity-item {
+        display: grid;
+        grid-template-columns: 78px minmax(0, 1fr);
+        gap: 12px;
+        align-items: start;
+        padding: 12px 14px;
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+      }
+      .activity-step {
+        color: rgba(156, 190, 229, 0.92);
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.45px;
+        text-transform: uppercase;
+      }
+      .activity-body strong {
+        display: block;
+        color: #f5f7fa;
+        font-size: 14px;
+        line-height: 1.45;
+      }
+      .activity-body p {
+        margin: 6px 0 0;
+        color: rgba(204, 216, 231, 0.82);
+        font-size: 13px;
+        line-height: 1.65;
+      }
+      .activity-item.done {
+        background: rgba(57, 110, 84, 0.18);
+        border-color: rgba(89, 164, 125, 0.26);
+      }
+      .activity-item.reply {
+        background: rgba(84, 108, 145, 0.16);
+        border-color: rgba(114, 142, 178, 0.24);
+      }
+      .activity-empty {
+        padding: 14px 16px;
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px dashed rgba(255, 255, 255, 0.12);
+        color: rgba(204, 216, 231, 0.78);
+        font-size: 13px;
+        line-height: 1.7;
       }
       pre {
         margin: 0;
@@ -767,6 +1106,68 @@ async def root() -> str:
 
         <div class="layout">
           <section class="playground">
+            <section class="panel conversation-panel">
+              <div class="conversation-header">
+                <div>
+                  <span class="section-kicker">Customer Message</span>
+                  <h2 style="margin: 8px 0 8px; color: #f6f5f1;">Conversation Surface</h2>
+                  <p class="conversation-caption">Keep the customer voice visible while you inspect state, rewards, and tool results. The panel follows the focused ticket and keeps the latest inbound message front and center.</p>
+                </div>
+                <div class="conversation-controls">
+                  <div class="conversation-control-row">
+                    <span class="conversation-label">Viewing</span>
+                    <span class="conversation-chip" id="conversation-ticket">No focused ticket</span>
+                  </div>
+                  <div class="conversation-control-row">
+                    <label class="follow-toggle" title="When enabled, the conversation panel follows the ticket touched by the most recent action.">
+                      <input id="follow-focus" type="checkbox" checked />
+                      Follow focused ticket
+                    </label>
+                    <span class="conversation-select-wrap" title="Pin the conversation panel to a specific ticket. Disable 'Follow focused ticket' to lock this selection.">
+                      <select class="conversation-select" id="conversation-ticket-select" disabled>
+                        <option value="">No tickets</option>
+                      </select>
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div class="conversation-stream">
+                <article class="message-row">
+                  <div class="message-avatar" aria-hidden="true">CS</div>
+                  <div>
+                    <div class="message-meta">
+                      <span class="message-role" id="customer-role">Customer</span>
+                      <span class="message-ticket" id="customer-meta">Waiting for a queue reset</span>
+                    </div>
+                    <div class="chat-bubble empty" id="customer-bubble">
+                      <p id="customer-message">The latest customer message will appear here once an episode is loaded.</p>
+                    </div>
+                  </div>
+                </article>
+                <article class="message-row agent">
+                  <div class="message-stack">
+                    <div class="message-meta">
+                      <span class="message-ticket" id="agent-meta">Reply will appear after draft or request actions</span>
+                      <span class="message-role" id="agent-role">Agent Reply</span>
+                    </div>
+                    <div class="chat-bubble empty" id="agent-bubble">
+                      <p id="agent-message">The environment will show the latest outbound reply here once the agent drafts a response.</p>
+                    </div>
+                  </div>
+                  <div class="message-avatar" aria-hidden="true">AI</div>
+                </article>
+              </div>
+              <div class="activity-panel">
+                <div class="activity-head">
+                  <strong>Step Narrative</strong>
+                  <span id="activity-summary">Reset the environment to begin.</span>
+                </div>
+                <div class="activity-list" id="activity-list">
+                  <div class="activity-empty">Step-by-step explanation will appear here. You will see what happened on reset, what each action changed, when a reply was drafted, and what `done = true` means for the episode.</div>
+                </div>
+              </div>
+            </section>
+
             <div class="panel runner-panel">
               <div class="runner-head">
                 <div class="runner-copy">
@@ -775,6 +1176,13 @@ async def root() -> str:
                   <p>Run the environment from a clean control surface, inspect queue-level metrics, and iterate on actions without leaving the page.</p>
                 </div>
                 <div class="runner-badge">Single-session review console</div>
+              </div>
+              <div class="banner" id="reset-required-banner" hidden>
+                <div>
+                  <strong>Task Changed</strong>
+                  <span>Press <code>Reset</code> to start a new episode before stepping.</span>
+                </div>
+                <div class="hint">Reset required</div>
               </div>
               <div class="summary-grid" style="margin-bottom: 12px;">
                 <div class="summary-card"><strong>Task</strong><span class="task-value" id="task-text">billing_refund_easy</span></div>
@@ -967,10 +1375,32 @@ GET  /schema</div>
       const seedInput = document.getElementById("seed");
       const actionInput = document.getElementById("action-json");
       const serviceMeta = document.getElementById("service-meta");
+      const customerRole = document.getElementById("customer-role");
+      const customerMeta = document.getElementById("customer-meta");
+      const customerBubble = document.getElementById("customer-bubble");
+      const customerMessage = document.getElementById("customer-message");
+      const conversationTicket = document.getElementById("conversation-ticket");
+      const agentRole = document.getElementById("agent-role");
+      const agentMeta = document.getElementById("agent-meta");
+      const agentBubble = document.getElementById("agent-bubble");
+      const agentMessage = document.getElementById("agent-message");
+      const activitySummary = document.getElementById("activity-summary");
+      const activityList = document.getElementById("activity-list");
+      const followFocusToggle = document.getElementById("follow-focus");
+      const conversationTicketSelect = document.getElementById("conversation-ticket-select");
+      const resetRequiredBanner = document.getElementById("reset-required-banner");
+      const stepBtn = document.getElementById("step-btn");
+      const suggestedBtn = document.getElementById("fill-sample");
         const jsonCache = new WeakMap();
         let latestState = null;
         let latestObservation = null;
         let latestResult = null;
+        let activityEntries = [];
+        let resetRequired = false;
+        let episodeDone = false;
+        let activeEpisodeTaskId = "";
+        let followFocusedTicket = true;
+        let pinnedTicketId = "";
 
         function pretty(data) {
           return JSON.stringify(data, null, 2);
@@ -1053,9 +1483,6 @@ GET  /schema</div>
         if (nestedState) {
           return nestedState;
         }
-        if (typeof payload.step_count === "number" || typeof payload.episode_id === "string") {
-          return payload;
-        }
         return null;
       }
 
@@ -1066,13 +1493,17 @@ GET  /schema</div>
         return {
           tickets: observationPayload.queue.map((ticket) => ({
             ...ticket,
-            messages: [],
+            messages: ticket.latest_customer_message
+              ? [{ role: "customer", content: ticket.latest_customer_message }]
+              : [],
             outbound_messages: [],
             internal_notes: [],
             requested_information: [],
+            tags: ticket.tags || [],
           })),
           progress: observationPayload.progress || null,
           step_count: 0,
+          action_history: [],
         };
       }
 
@@ -1087,8 +1518,323 @@ GET  /schema</div>
         return [];
       }
 
+      function findFocusedTicket(observationPayload, statePayload) {
+        const observationFocused = observationPayload && observationPayload.focused_ticket;
+        if (observationFocused && typeof observationFocused === "object") {
+          return observationFocused;
+        }
+
+        const focusedTicketId = statePayload && statePayload.focused_ticket_id;
+        const workingTickets = statePayload && Array.isArray(statePayload.tickets)
+          ? statePayload.tickets
+          : observationPayload && Array.isArray(observationPayload.queue)
+            ? observationPayload.queue
+            : [];
+        if (focusedTicketId) {
+          const focused = workingTickets.find((ticket) => ticket.ticket_id === focusedTicketId);
+          if (focused) {
+            return focused;
+          }
+        }
+        return workingTickets.length ? workingTickets[0] : null;
+      }
+
+      function getWorkingTicketsFromPayloads(observationPayload, statePayload) {
+        if (statePayload && Array.isArray(statePayload.tickets) && statePayload.tickets.length) {
+          return statePayload.tickets;
+        }
+        if (observationPayload && Array.isArray(observationPayload.queue) && observationPayload.queue.length) {
+          return observationPayload.queue;
+        }
+        return [];
+      }
+
+      function findTicketById(tickets, ticketId) {
+        if (!ticketId) {
+          return null;
+        }
+        return tickets.find((ticket) => ticket && ticket.ticket_id === ticketId) || null;
+      }
+
+      function updateConversationSelector(tickets, focusedTicketId) {
+        if (!conversationTicketSelect) {
+          return;
+        }
+        const optionsSignature = tickets.map((ticket) => ticket.ticket_id).join("|");
+        const currentSignature = conversationTicketSelect.getAttribute("data-signature") || "";
+        if (optionsSignature !== currentSignature) {
+          conversationTicketSelect.setAttribute("data-signature", optionsSignature);
+          conversationTicketSelect.innerHTML = tickets.length
+            ? tickets.map((ticket) => {
+                const label = ticket.subject ? `${ticket.ticket_id} - ${ticket.subject}` : ticket.ticket_id;
+                return `<option value="${ticket.ticket_id}">${label}</option>`;
+              }).join("")
+            : '<option value="">No tickets</option>';
+        }
+
+        const hasTickets = tickets.length > 0;
+        conversationTicketSelect.disabled = !hasTickets || followFocusedTicket;
+        if (followFocusedTicket) {
+          pinnedTicketId = focusedTicketId || (hasTickets ? tickets[0].ticket_id : "");
+        }
+        if (pinnedTicketId && conversationTicketSelect.value !== pinnedTicketId) {
+          conversationTicketSelect.value = pinnedTicketId;
+        }
+      }
+
+      function latestCustomerMessage(ticket) {
+        if (!ticket || !Array.isArray(ticket.messages)) {
+          return ticket && typeof ticket.latest_customer_message === "string"
+            ? ticket.latest_customer_message
+            : "";
+        }
+        for (let index = ticket.messages.length - 1; index >= 0; index -= 1) {
+          const message = ticket.messages[index];
+          if (message && message.role === "customer" && message.content) {
+            return message.content;
+          }
+        }
+        return typeof ticket.latest_customer_message === "string" ? ticket.latest_customer_message : "";
+      }
+
+      function latestAgentMessage(ticket) {
+        if (!ticket) {
+          return "";
+        }
+        if (Array.isArray(ticket.messages)) {
+          for (let index = ticket.messages.length - 1; index >= 0; index -= 1) {
+            const message = ticket.messages[index];
+            if (message && message.role === "agent" && message.content) {
+              return message.content;
+            }
+          }
+        }
+        if (Array.isArray(ticket.outbound_messages) && ticket.outbound_messages.length > 0) {
+          const latest = ticket.outbound_messages[ticket.outbound_messages.length - 1];
+          return typeof latest === "string" ? latest : "";
+        }
+        return "";
+      }
+
+      function actionLabel(actionType) {
+        if (!actionType) {
+          return "Action";
+        }
+        return actionType.replaceAll("_", " ");
+      }
+
+      function describeCompletion(observationPayload, statePayload) {
+        const progress = observationPayload && observationPayload.progress
+          ? observationPayload.progress
+          : statePayload && statePayload.progress
+            ? statePayload.progress
+            : null;
+        const score = progress && progress.score != null ? Number(progress.score) : null;
+        if (score != null && Number.isFinite(score)) {
+          return `Episode complete. Final score is ${score.toFixed(2)} and no more actions are required unless you want to inspect the final state.`;
+        }
+        return "Episode complete. The environment considers the workflow finished, so further actions are not needed.";
+      }
+
+      function currentTicketStatus(ticket) {
+        return ticket && ticket.current_status ? String(ticket.current_status).replaceAll("_", " ") : "updated";
+      }
+
+      function normalizeActionType(value) {
+        if (!value) {
+          return "";
+        }
+        if (typeof value === "string") {
+          return value;
+        }
+        if (typeof value === "object") {
+          if (typeof value.value === "string") return value.value;
+          if (typeof value._value_ === "string") return value._value_;
+          if (typeof value.name === "string") return value.name;
+        }
+        return String(value);
+      }
+
+      function wasRepeatedAction(statePayload, action) {
+        const history = statePayload && Array.isArray(statePayload.action_history)
+          ? statePayload.action_history
+          : [];
+        if (history.length < 2 || !action) {
+          return false;
+        }
+        const latest = history[history.length - 1];
+        const previous = history[history.length - 2];
+        return latest && previous &&
+          latest.action_type === previous.action_type &&
+          latest.ticket_id === previous.ticket_id &&
+          latest.action_type === action.action_type &&
+          latest.ticket_id === action.ticket_id;
+      }
+
+      function pushActivityEntry(entry) {
+        activityEntries = [entry, ...activityEntries];
+        if (activityEntries.length > 200) {
+          activityEntries.length = 200;
+        }
+      }
+
+      function renderActivityFeed() {
+        activitySummary.textContent = activityEntries.length
+          ? `${activityEntries[0].stepLabel} captured. Latest environment transition is shown first.`
+          : "Reset the environment to begin.";
+
+        if (!activityEntries.length) {
+          activityList.innerHTML = '<div class="activity-empty">Step-by-step explanation will appear here. You will see what happened on reset, what each action changed, when a reply was drafted, and what `done = true` means for the episode.</div>';
+          return;
+        }
+
+        activityList.innerHTML = activityEntries.map((entry) => `
+          <article class="activity-item ${entry.kind}">
+            <div class="activity-step">${entry.stepLabel}</div>
+            <div class="activity-body">
+              <strong>${entry.title}</strong>
+              <p>${entry.detail}</p>
+            </div>
+          </article>
+        `).join("");
+      }
+
+      function recordResetActivity(observationPayload, statePayload) {
+        const queueSize = observationPayload && Array.isArray(observationPayload.queue)
+          ? observationPayload.queue.length
+          : statePayload && Array.isArray(statePayload.tickets)
+            ? statePayload.tickets.length
+            : 0;
+        const taskId = observationPayload && observationPayload.task && observationPayload.task.task_id
+          ? observationPayload.task.task_id
+          : taskInput.value;
+        activityEntries = [{
+          stepLabel: "Reset",
+          title: `Loaded ${taskId} with ${queueSize} ticket${queueSize === 1 ? "" : "s"}`,
+          detail: observationPayload && observationPayload.last_action_result
+            ? observationPayload.last_action_result
+            : "A new episode started. Review the customer message, inspect the state, then choose the next action.",
+          kind: "reset",
+        }];
+        renderActivityFeed();
+      }
+
+      function recordStepActivity(action, payload, observationPayload, statePayload) {
+        const infoState = payload && payload.info && payload.info.state ? payload.info.state : null;
+        const historyFromInfo = infoState && Array.isArray(infoState.action_history) ? infoState.action_history : null;
+        const historyFromState = statePayload && Array.isArray(statePayload.action_history) ? statePayload.action_history : null;
+        const lastHistoryEntry = historyFromInfo && historyFromInfo.length
+          ? historyFromInfo[historyFromInfo.length - 1]
+          : historyFromState && historyFromState.length
+            ? historyFromState[historyFromState.length - 1]
+            : null;
+        const stepCount = lastHistoryEntry && typeof lastHistoryEntry.step_number === "number"
+          ? lastHistoryEntry.step_number
+          : statePayload && typeof statePayload.step_count === "number" && statePayload.step_count > 0
+            ? statePayload.step_count
+            : activityEntries.filter((entry) => entry.stepLabel.startsWith("Step")).length + 1;
+        const reward = payload && payload.reward != null && Number.isFinite(Number(payload.reward))
+          ? Number(payload.reward).toFixed(2)
+          : "0.00";
+        const lastResult = observationPayload && observationPayload.last_action_result
+          ? observationPayload.last_action_result
+          : "The environment processed the action.";
+        const focusedTicket = findFocusedTicket(observationPayload, statePayload);
+        const agentText = latestAgentMessage(focusedTicket);
+        const isReplyAction = action && (action.action_type === "draft_reply" || action.action_type === "request_info");
+        const isDone = Boolean(payload && payload.done);
+        const repeatedAction = wasRepeatedAction(statePayload, action);
+        const actionName = actionLabel(action && action.action_type);
+        const ticketLabel = action && action.ticket_id ? action.ticket_id : (focusedTicket && focusedTicket.ticket_id ? focusedTicket.ticket_id : "current ticket");
+
+        let title = `${actionName} executed`;
+        let detail = `Action sent: ${actionName} on ${ticketLabel}. ${lastResult} Current status: ${currentTicketStatus(focusedTicket)}. Reward: ${reward}.`;
+        let kind = "step";
+
+        if (isReplyAction && agentText) {
+          title = "Reply drafted for the customer";
+          detail = `Action sent: ${actionName} on ${ticketLabel}. ${lastResult} The outbound message now appears in the Agent Reply bubble. Current status: ${currentTicketStatus(focusedTicket)}. Reward: ${reward}.`;
+          kind = "reply";
+        }
+        if (repeatedAction) {
+          title = "Duplicate action submitted";
+          detail = `You sent ${actionName} again for ${ticketLabel}. ${lastResult} This usually means the same action was stepped twice, so the environment recorded another similar transition. Current status: ${currentTicketStatus(focusedTicket)}. Reward: ${reward}.`;
+          kind = "step";
+        }
+        if (isDone) {
+          title = "Episode finished";
+          detail = describeCompletion(observationPayload, statePayload);
+          kind = "done";
+        }
+
+        pushActivityEntry({
+          stepLabel: `Step ${stepCount}`,
+          title,
+          detail,
+          kind,
+        });
+        renderActivityFeed();
+      }
+
+      function renderConversationPanel(observationPayload, statePayload) {
+        const tickets = getWorkingTicketsFromPayloads(observationPayload, statePayload);
+        const focusedTicket = findFocusedTicket(observationPayload, statePayload);
+        const focusedTicketId = focusedTicket && focusedTicket.ticket_id ? focusedTicket.ticket_id : "";
+        updateConversationSelector(tickets, focusedTicketId);
+
+        const ticket = followFocusedTicket
+          ? focusedTicket
+          : findTicketById(tickets, pinnedTicketId) || focusedTicket;
+        if (!ticket) {
+          customerRole.textContent = "Customer";
+          customerMeta.textContent = "Waiting for a queue reset";
+          conversationTicket.textContent = "No focused ticket";
+          customerMessage.textContent = "The latest customer message will appear here once an episode is loaded.";
+          customerBubble.classList.add("empty");
+          agentRole.textContent = "Agent Reply";
+          agentMeta.textContent = "Reply will appear after draft or request actions";
+          agentMessage.textContent = "The environment will show the latest outbound reply here once the agent drafts a response.";
+          agentBubble.classList.add("empty");
+          renderActivityFeed();
+          return;
+        }
+
+        const customerName = ticket.customer_name || "Customer";
+        const tier = ticket.customer_tier || "standard";
+        const customerText = latestCustomerMessage(ticket);
+        const agentText = latestAgentMessage(ticket);
+        const message = customerText || "No customer message available for this ticket yet.";
+        const ticketLabel = ticket.ticket_id || "Ticket pending";
+
+        customerRole.textContent = customerName;
+        customerMeta.textContent = `${ticketLabel} | ${tier}`;
+        conversationTicket.textContent = followFocusedTicket ? ticketLabel : `${ticketLabel} (locked)`;
+        customerMessage.textContent = message;
+        customerBubble.classList.toggle("empty", !customerText);
+        agentRole.textContent = "Agent Reply";
+        agentMeta.textContent = agentText
+          ? `${ticketLabel} | latest outbound message`
+          : "Reply will appear after draft or request actions";
+        agentMessage.textContent = agentText || "The environment will show the latest outbound reply here once the agent drafts a response.";
+        agentBubble.classList.toggle("empty", !agentText);
+        renderActivityFeed();
+      }
+
       function setStatus(text) {
         statusText.textContent = text;
+      }
+
+      function setResetRequired(value) {
+        resetRequired = Boolean(value);
+        if (stepBtn) stepBtn.disabled = resetRequired || episodeDone;
+        if (suggestedBtn) suggestedBtn.disabled = resetRequired || episodeDone;
+        if (resetRequiredBanner) resetRequiredBanner.hidden = !resetRequired;
+      }
+
+      function setEpisodeDone(value) {
+        episodeDone = Boolean(value);
+        if (stepBtn) stepBtn.disabled = resetRequired || episodeDone;
+        if (suggestedBtn) suggestedBtn.disabled = resetRequired || episodeDone;
       }
 
         function summarizeQueueHealth(statePayload) {
@@ -1270,6 +2016,9 @@ GET  /schema</div>
             : 0;
         rewardText.textContent = Number.isFinite(reward) ? reward.toFixed(2) : "0.00";
         doneText.textContent = payload ? String(Boolean(payload.done)) : doneText.textContent;
+        if (payload && Object.prototype.hasOwnProperty.call(payload, "done")) {
+          setEpisodeDone(Boolean(payload.done));
+        }
         const score = observationPayload && observationPayload.progress
           ? observationPayload.progress.score
           : statePayload && statePayload.progress
@@ -1279,6 +2028,7 @@ GET  /schema</div>
         scoreText.textContent = parsedScore != null && Number.isFinite(parsedScore) ? parsedScore.toFixed(2) : "0.01";
         stepsText.textContent = statePayload && statePayload.step_count != null ? String(statePayload.step_count) : "0";
         taskText.textContent = taskInput.value;
+        renderConversationPanel(observationPayload, statePayload);
         renderWorldPanels(observationPayload, statePayload);
       }
 
@@ -1297,10 +2047,13 @@ GET  /schema</div>
 
       function inferCategory(ticket) {
         const subject = (ticket.subject || "").toLowerCase();
-        const latestMessage = (ticket.messages || [])
+        // Infer intent from customer content only (agent replies can contain words like "incident"
+        // which would otherwise cause the heuristic to drift on later steps).
+        const customerMessage = (ticket.messages || [])
+          .filter((message) => message && message.role === "customer")
           .map((message) => message.content || "")
-          .join(" ")
-          .toLowerCase();
+          .join(" ");
+        const latestMessage = `${customerMessage} ${ticket.latest_customer_message || ""}`.trim().toLowerCase();
         const tagText = ((ticket.tags || []).join(" ")).toLowerCase();
         const combined = `${subject} ${latestMessage} ${tagText}`;
         if (combined.includes("mfa") || combined.includes("2fa") || combined.includes("compromised") || combined.includes("recovery") || combined.includes("one-time code") || combined.includes("suspicious activity") || combined.includes("ceo")) {
@@ -1324,11 +2077,19 @@ GET  /schema</div>
           };
         }
         if (combined.includes("export") || combined.includes("csv") || combined.includes("xlsx") || combined.includes("500 error") || combined.includes("502 error") || combined.includes("server error") || combined.includes("reporting")) {
+          const isEscalationRecovery = tagText.includes("escalation-review") || combined.includes("keeps bouncing") || combined.includes("bouncing") || combined.includes("rejected escalation");
+          const isIncidentCoordinationRequest =
+            combined.includes("coordinate an incident") ||
+            combined.includes("incident coordination") ||
+            tagText.includes("escalation-review");
           return {
-            category: combined.includes("incident") || combined.includes("bridge") || tagText.includes("incident") || tagText.includes("incident-follow-up") || tagText.includes("escalation-review")
+            // Default to product_bug unless the customer explicitly asks for incident coordination or
+            // the scenario is the escalation recovery workflow.
+            category: combined.includes("bridge") || isIncidentCoordinationRequest
               ? "incident_coordination"
               : "product_bug",
-            priority: "high",
+            // Some scenarios (escalation packet recovery) intentionally require urgent incident coordination.
+            priority: isEscalationRecovery ? "urgent" : "high",
             team: "engineering"
           };
         }
@@ -1347,10 +2108,10 @@ GET  /schema</div>
           return "I am sorry for the billing disruption. I reviewed the account context and started the refund approval workflow with billing. We will keep you updated as the review completes, and approved refunds typically land within 5-7 business days.";
         }
         if (defaults.category === "incident_coordination") {
-          return "I am sorry this is blocking your work. I have created an incident and escalated this issue to engineering for investigation. Please share the affected workspace, approximate timestamp, and browser details to help us triage faster.";
+          return "I am sorry this is blocking your work, and I agree this is urgent. I have created an incident and escalated this issue to engineering for investigation. Please share (or confirm) the affected workspace, the approximate timestamp, and the browser details so we can reproduce the export error quickly.";
         }
         if (defaults.category === "product_bug") {
-          return "I am sorry this is blocking your work. I have opened an incident and escalated this issue to engineering for investigation. Please share the affected workspace, approximate timestamp, and browser details to help us triage faster.";
+          return "I am sorry this is blocking your work, and I agree this is urgent. I have opened an incident and escalated this issue to engineering for investigation. Please share (or confirm) the affected workspace, the approximate timestamp, and the browser details so we can reproduce the export error quickly.";
         }
         if (defaults.category === "security_account_takeover" || defaults.category === "security_escalation") {
           return "I am sorry you are dealing with this. I have escalated this to our security team and Trust and Safety specialists. Please do not share passwords or one-time codes. Keep MFA enabled and use the secure recovery flow or password reset link to regain access.";
@@ -1358,9 +2119,35 @@ GET  /schema</div>
         return "I am sorry you are having trouble accessing the account. Please use the secure password reset flow, and let us know if access is still blocked afterward.";
       }
 
+      function extractReproPacket(ticket) {
+        const raw = `${ticket && ticket.subject ? ticket.subject : ""} ${latestCustomerMessage(ticket)}`.trim();
+        const workspaceFromField = ticket && ticket.workspace_id ? String(ticket.workspace_id) : "";
+        const workspaceMatch = raw.match(/\\bworkspace\\s+([a-z0-9-]+)/i);
+        const workspace = workspaceFromField || (workspaceMatch ? workspaceMatch[1] : "");
+        const errorMatch = raw.match(/\\b(500 error|502 error|server error)\\b/i);
+        const browserMatch = raw.match(/\\b(Chrome\\s*\\d+|Edge\\s*\\d+|Firefox\\s*ESR)\\b/i);
+        const timeMatch = raw.match(/\\b(\\d{1,2}:\\d{2}\\s*UTC)\\b/i);
+        return {
+          workspace,
+          error_code: errorMatch ? errorMatch[1] : "",
+          browser: browserMatch ? browserMatch[1] : "",
+          time_reference: timeMatch ? timeMatch[1] : "",
+        };
+      }
+
       function defaultEscalation(ticket, defaults) {
         if (defaults.category === "security_account_takeover" || defaults.category === "security_escalation") {
           return `Escalating ${ticket.ticket_id} to Trust and Safety for urgent account-takeover review. Subject: ${ticket.subject}. Keep MFA enabled and use secure recovery steps only.`;
+        }
+        if (defaults.team === "engineering" && (defaults.category === "incident_coordination" || defaults.category === "product_bug")) {
+          const packet = extractReproPacket(ticket);
+          const fields = [];
+          if (packet.workspace) fields.push(`workspace ${packet.workspace}`);
+          if (packet.error_code) fields.push(packet.error_code);
+          if (packet.browser) fields.push(packet.browser);
+          if (packet.time_reference) fields.push(packet.time_reference);
+          const packetText = fields.length ? ` Repro packet: ${fields.join(", ")}.` : "";
+          return `Escalating ${ticket.ticket_id} to engineering for incident coordination. Subject: ${ticket.subject}.${packetText} Please investigate the export outage and advise next steps.`;
         }
         return `Escalating ${ticket.ticket_id} for specialist review. Subject: ${ticket.subject}. Include workspace, impact summary, browser, and timestamp in the incident context.`;
       }
@@ -1369,7 +2156,9 @@ GET  /schema</div>
         const history = latestState && Array.isArray(latestState.action_history)
           ? latestState.action_history
           : [];
-        return history.some((entry) => entry.action_type === actionType && entry.ticket_id === ticketId);
+        return history.some((entry) =>
+          normalizeActionType(entry.action_type) === actionType && entry.ticket_id === ticketId
+        );
       }
 
       function buildTaskSpecificAction(taskId, ticket, defaults) {
@@ -1615,6 +2404,19 @@ GET  /schema</div>
         return null;
       }
 
+      function workflowRank(taskId, ticket, defaults) {
+        if (taskId !== "mixed_queue_command_center") {
+          return 0;
+        }
+        // Enforce the intended mixed-queue prioritization:
+        // security -> outage -> refund -> routine access.
+        const category = defaults && defaults.category ? defaults.category : "";
+        if (category === "security_account_takeover" || category === "security_escalation") return 0;
+        if (category === "product_bug" || category === "incident_coordination") return 1;
+        if (category === "billing_refund" || category === "billing_approval") return 2;
+        return 3;
+      }
+
       function buildSuggestedActionFromState() {
         const workingTickets = getWorkingTickets();
         if (!workingTickets.length) {
@@ -1627,13 +2429,26 @@ GET  /schema</div>
           const priorityRank = { urgent: 0, high: 1, medium: 2, low: 3 };
           const aDefaults = inferCategory(a);
           const bDefaults = inferCategory(b);
+          const aWorkflow = workflowRank(taskInput.value, a, aDefaults);
+          const bWorkflow = workflowRank(taskInput.value, b, bDefaults);
+          if (aWorkflow !== bWorkflow) return aWorkflow - bWorkflow;
           const aDone = ["resolved", "escalated"].includes(a.current_status) ? 1 : 0;
           const bDone = ["resolved", "escalated"].includes(b.current_status) ? 1 : 0;
           if (aDone !== bDone) return aDone - bDone;
           return (priorityRank[aDefaults.priority] ?? 9) - (priorityRank[bDefaults.priority] ?? 9);
         });
 
+        const activeTickets = tickets.filter((ticket) => !["resolved", "escalated"].includes(ticket.current_status));
+        if (!activeTickets.length) {
+          actionInput.value = pretty({ action_type: "finish" });
+          setStatus("Queue complete. Send finish to close the episode.");
+          return;
+        }
+
         for (const ticket of tickets) {
+          if (["resolved", "escalated"].includes(ticket.current_status)) {
+            continue;
+          }
           const defaults = inferCategory(ticket);
           const taskSpecificAction = buildTaskSpecificAction(taskInput.value, ticket, defaults);
           if (taskSpecificAction) {
@@ -1652,7 +2467,11 @@ GET  /schema</div>
           }
 
           if (defaults.category === "billing_refund" || defaults.category === "billing_approval") {
-            if (!ticket.outbound_messages || ticket.outbound_messages.length === 0) {
+            const hasReply =
+              (ticket.outbound_messages && ticket.outbound_messages.length > 0) ||
+              hasActionBeenTaken("draft_reply", ticket.ticket_id) ||
+              hasActionBeenTaken("request_info", ticket.ticket_id);
+            if (!hasReply) {
               actionInput.value = pretty({
                 action_type: "draft_reply",
                 ticket_id: ticket.ticket_id,
@@ -1672,7 +2491,11 @@ GET  /schema</div>
           }
 
           if (defaults.category === "product_bug" || defaults.category === "incident_coordination" || defaults.category === "security_account_takeover" || defaults.category === "security_escalation") {
-            if (!ticket.outbound_messages || ticket.outbound_messages.length === 0) {
+            const hasReply =
+              (ticket.outbound_messages && ticket.outbound_messages.length > 0) ||
+              hasActionBeenTaken("draft_reply", ticket.ticket_id) ||
+              hasActionBeenTaken("request_info", ticket.ticket_id);
+            if (!hasReply) {
               actionInput.value = pretty({
                 action_type: "draft_reply",
                 ticket_id: ticket.ticket_id,
@@ -1697,13 +2520,38 @@ GET  /schema</div>
         setStatus("Suggested next action generated.");
       }
 
+      async function suggestNextAction() {
+        if (episodeDone) {
+          setStatus("Episode finished. Press Reset to start a new episode.");
+          return;
+        }
+        // Suggest from local shadow-state; /state is minimal in OpenEnv HTTP server.
+        // If we have no tickets yet, try hydrating once.
+        if (!latestState || !Array.isArray(latestState.tickets) || latestState.tickets.length === 0) {
+          try {
+            await refreshState();
+          } catch {
+            // ignore
+          }
+        }
+        buildSuggestedActionFromState();
+      }
+
         async function refreshState() {
           const response = await fetch("/state");
           const payload = await response.json();
           const parsedState = extractStatePayload(payload);
-          latestState = parsedState
-            ? { ...(latestState || {}), ...parsedState }
-            : latestState;
+          // OpenEnv `/state` can be minimal (episode_id + step_count only). Don't wipe the
+          // richer shadow state built from `/reset` + `/step` observations.
+          if (parsedState) {
+            if (parsedState.tickets && Array.isArray(parsedState.tickets)) {
+              latestState = parsedState;
+            } else if (latestState && typeof latestState === "object") {
+              latestState = { ...latestState, ...parsedState };
+            } else {
+              latestState = parsedState;
+            }
+          }
           renderStatePanel(latestState || payload);
           updateSummary(latestResult, latestState);
           return payload;
@@ -1711,6 +2559,7 @@ GET  /schema</div>
 
       async function doReset() {
         setStatus("Resetting episode...");
+        setEpisodeDone(false);
         const body = { task_id: taskInput.value };
         if (seedInput.value !== "") {
           body.seed = Number(seedInput.value);
@@ -1721,28 +2570,45 @@ GET  /schema</div>
           body: JSON.stringify(body),
         });
         const payload = await response.json();
+        if (response.ok) {
+          setResetRequired(false);
+          activeEpisodeTaskId = taskInput.value;
+          followFocusedTicket = true;
+          pinnedTicketId = "";
+          if (followFocusToggle) {
+            followFocusToggle.checked = true;
+          }
+        }
         latestObservation = extractObservationPayload(payload);
-          latestState =
-            extractStatePayload(payload) ||
-            buildStateFromObservation(latestObservation) ||
-            latestState;
+          latestState = buildStateFromObservation(latestObservation) || latestState;
+          if (latestState) {
+            latestState.step_count = 0;
+            latestState.action_history = [];
+            if (latestObservation && latestObservation.focused_ticket && latestObservation.focused_ticket.ticket_id) {
+              latestState.focused_ticket_id = latestObservation.focused_ticket.ticket_id;
+              latestState.tickets = (latestState.tickets || []).map((ticket) =>
+                ticket.ticket_id === latestObservation.focused_ticket.ticket_id ? latestObservation.focused_ticket : ticket
+              );
+            }
+          }
           latestResult = payload;
           renderResponsePanel(payload, "reset");
           renderStatePanel(latestState);
-          if (!extractStatePayload(payload)) {
-            try {
-              await refreshState();
-            } catch (error) {
-              stateKind.textContent = "state-error";
-              setFormattedContent(stateJson, { error: "State fetch failed", detail: String(error) });
-            }
-          }
           updateSummary(payload, latestState);
+          recordResetActivity(latestObservation, latestState);
           setStatus(response.ok ? "Episode reset successfully" : "Reset failed");
-          buildSuggestedActionFromState();
+          await suggestNextAction();
         }
 
       async function doStep() {
+        if (resetRequired) {
+          setStatus("Task changed. Press Reset before stepping.");
+          return;
+        }
+        if (episodeDone) {
+          setStatus("Episode finished. Press Reset to start a new episode.");
+          return;
+        }
         setStatus("Sending action...");
         let action;
         try {
@@ -1759,25 +2625,48 @@ GET  /schema</div>
           body: JSON.stringify({ action }),
         });
         const payload = await response.json();
-        latestObservation = extractObservationPayload(payload);
-          latestState =
-            extractStatePayload(payload) ||
-            buildStateFromObservation(latestObservation) ||
-            latestState;
+          latestObservation = extractObservationPayload(payload);
+          const priorState = latestState;
+          latestState = buildStateFromObservation(latestObservation) || latestState;
+          if (latestState) {
+            const priorHistory = priorState && Array.isArray(priorState.action_history) ? priorState.action_history : [];
+            // buildStateFromObservation may initialize an empty array each time; preserve history unless
+            // the new state already contains meaningful action history.
+            if (Array.isArray(latestState.action_history) && latestState.action_history.length > 0) {
+              // keep as-is
+            } else {
+              latestState.action_history = [...priorHistory];
+            }
+            const priorSteps = priorState && typeof priorState.step_count === "number" ? priorState.step_count : 0;
+            latestState.step_count = priorSteps + 1;
+
+            if (latestObservation && latestObservation.focused_ticket && latestObservation.focused_ticket.ticket_id) {
+              latestState.focused_ticket_id = latestObservation.focused_ticket.ticket_id;
+              latestState.tickets = (latestState.tickets || []).map((ticket) =>
+                ticket.ticket_id === latestObservation.focused_ticket.ticket_id ? latestObservation.focused_ticket : ticket
+              );
+            }
+
+            latestState.action_history.push({
+              step_number: latestState.step_count,
+              action_type: action.action_type,
+              ticket_id: action.ticket_id || null,
+              app: action.app || null,
+              target_id: action.target_id || null,
+              summary: latestObservation && latestObservation.last_action_result ? latestObservation.last_action_result : "",
+            });
+          }
           latestResult = payload;
           renderResponsePanel(payload, "step");
           renderStatePanel(latestState);
-          if (!extractStatePayload(payload)) {
-            try {
-              await refreshState();
-            } catch (error) {
-              stateKind.textContent = "state-error";
-              setFormattedContent(stateJson, { error: "State fetch failed", detail: String(error) });
-            }
-          }
           updateSummary(payload, latestState);
+          recordStepActivity(action, payload, latestObservation, latestState);
+          if (payload && payload.done) {
+            setStatus("Episode finished. Press Reset to start a new episode.");
+            return;
+          }
           setStatus(response.ok ? "Action executed" : "Step request failed");
-          buildSuggestedActionFromState();
+          await suggestNextAction();
         }
 
         async function getState() {
@@ -1860,11 +2749,37 @@ GET  /schema</div>
       document.getElementById("step-btn").addEventListener("click", doStep);
       document.getElementById("state-btn").addEventListener("click", getState);
       document.getElementById("schema-btn").addEventListener("click", loadSchema);
-      document.getElementById("fill-sample").addEventListener("click", buildSuggestedActionFromState);
+      document.getElementById("fill-sample").addEventListener("click", suggestNextAction);
       taskInput.addEventListener("change", () => {
         taskText.textContent = taskInput.value;
+        // Only enforce "reset required" once the user has started an episode in this session.
+        // Otherwise the banner can appear the first time someone selects a task, which feels noisy.
+        if (activeEpisodeTaskId) {
+          if (taskInput.value === activeEpisodeTaskId) {
+            setResetRequired(false);
+            setStatus("Returned to current episode task.");
+          } else {
+            setResetRequired(true);
+            setStatus("Task changed. Press Reset to start a new episode.");
+          }
+        }
         fillSample();
       });
+      if (followFocusToggle) {
+        followFocusToggle.addEventListener("change", () => {
+          followFocusedTicket = Boolean(followFocusToggle.checked);
+          if (conversationTicketSelect) {
+            conversationTicketSelect.disabled = followFocusedTicket;
+          }
+          updateSummary(latestResult, latestState);
+        });
+      }
+      if (conversationTicketSelect) {
+        conversationTicketSelect.addEventListener("change", () => {
+          pinnedTicketId = conversationTicketSelect.value || "";
+          updateSummary(latestResult, latestState);
+        });
+      }
 
       fillSample();
         loadMetadata().catch((error) => {
