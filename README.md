@@ -12,6 +12,55 @@ tags:
 
 The current project is fully wired around a **10-task enterprise benchmark set**. The simulator, server UI, synthetic dataset generator, training pipeline, and default inference scripts now all point at the same expanded task family list.
 
+## Submission Snapshot
+
+This project is positioned primarily for **Theme 3.1: World Modeling for professional tasks**, with longer-horizon workflow behavior as a secondary strength.
+
+For judges and reviewers, the intended submission package is:
+
+- OpenEnv-compatible environment served from a Hugging Face Space
+- judge-facing local dashboard for stepping through tasks
+- deterministic reward and grading logic with delayed consequence handling
+- training artifacts covering both lightweight baseline evaluation and Unsloth + TRL fine-tuning
+- README-linked external assets such as Space URL, mini-blog, demo video, or slide deck
+
+Submission links to fill before final handoff:
+
+- Hugging Face Space: `TODO`
+- Mini-blog / writeup: `TODO`
+- Demo video or slide deck: `TODO`
+- Training run plots / W&B run: `TODO`
+
+## What Already Exists In The Repo
+
+The current project is already a usable environment package, not just an idea draft.
+It includes:
+
+- typed action, observation, reward, and state models
+- a simulator with `reset`, `step`, and `state`
+- ten seeded task families with deterministic graders
+- an OpenEnv/FastAPI server and local judge-facing dashboard
+- a competition-style `inference.py` entrypoint
+- synthetic dataset generation, trajectory generation, and training-data builders
+- a lightweight classifier baseline plus before/after evaluation script
+- an Unsloth + TRL Colab notebook for minimal post-training
+- tests for simulator, inference policy, logging, and data generation
+
+## Recommended Submission Framing
+
+The strongest way to pitch this project is:
+
+> A policy-aware support operations environment where an agent must manage a
+> partially observable enterprise queue, coordinate correct routing and customer
+> communication, and optimize for safe outcomes under delayed business impact.
+
+That framing matches what the repository already does today:
+
+- it is an environment, not just a prompt-response benchmark
+- it is grounded in real operational workflows
+- it uses objective state transitions and deterministic grading
+- it creates measurable opportunities for before/after training evaluation
+
 ## Environment Goal
 
 This environment is designed for **Theme 3.1: World Modeling for professional tasks**:
@@ -28,6 +77,60 @@ This environment is designed for **Theme 3.1: World Modeling for professional ta
 - Correct behavior often requires reading hidden context from CRM, billing, policy, incident, or trust systems.
 - Reward is not only based on a final label. It tracks queue health, SLA pressure, workflow completion, and downstream risks.
 - Several tasks require multi-step workflows before a ticket can be safely resolved or escalated.
+
+## Why This Is A Strong Hackathon Fit
+
+- The environment is **verifiable**: reward comes from explicit state transitions and deterministic graders, not only from a free-form judge.
+- The environment is **trainable**: the repo includes synthetic data generation, trajectory generation, baseline evaluation, and an Unsloth + TRL notebook.
+- The environment is **demo-friendly**: the FastAPI server exposes a polished local console that lets judges inspect queue state, actions, and reward changes live.
+- The environment is **hard to shortcut**: several tasks include delayed events such as escalation rejection, ticket reopen, and customer follow-up so shallow one-step behavior does not score well.
+
+## Hackathon Theme Fit
+
+### Primary Fit: Theme 3.1 Professional Tasks
+
+This is the strongest theme match because the agent is expected to do real work
+inside a partially observable business workflow instead of only generating a
+good-looking answer. The environment fits Theme 3.1 well because:
+
+- tickets evolve over time rather than ending in one turn
+- actions change the world state
+- the agent must use enterprise tools such as CRM, billing, incident, trust, and policy systems
+- evaluation is grounded in business logic, routing correctness, and safety policy
+- downstream consequences matter, including reopen risk and escalation rejection
+
+### Secondary Fit: Theme 2 Long-Horizon Planning
+
+The environment also has a strong secondary fit with long-horizon planning
+because several tasks require:
+
+- queue-level prioritization across multiple tickets
+- multi-step workflows before safe resolution
+- delayed events such as customer follow-up, rejection, and reopen
+- recovery from earlier mistakes instead of one-shot correctness
+
+The current benchmark is still compact compared with an extreme long-horizon
+setting, so Theme 2 is best treated as a depth layer rather than the primary
+top-line framing.
+
+### Future Extension: Theme 1 Multi-Agent Interactions
+
+The current implementation is mostly single-agent, but support operations are a
+natural place to add multi-agent structure later:
+
+- billing specialist agent
+- engineering triage agent
+- trust and safety agent
+- customer simulator
+- manager or SLA coordinator
+
+That makes Theme 1 a believable future extension, but not the cleanest primary
+submission framing for the current repo.
+
+### Why Not Theme 3.2 Or Theme 4
+
+- Theme 3.2 is a weak fit because this project is enterprise support, not personal assistant task handling.
+- Theme 4 is not the best current framing because the repo does not yet center self-play, recursive task creation, or adaptive self-improvement loops.
 
 ## Task Families
 
@@ -225,6 +328,20 @@ This script:
 - compares heuristic routing versus trained routing
 - reports both classification deltas and environment-score deltas across the task suite
 
+### Unsloth + TRL Colab Path
+
+The repo also includes a notebook-oriented post-training path at `notebooks/triageos_training_colab.ipynb`.
+
+That notebook is designed to:
+
+- build multi-step trajectory data
+- prepare an SFT-style dataset from environment rollouts
+- fine-tune a compact instruct model with **Unsloth**
+- train through **TRL** components
+- save a runnable model artifact for follow-up evaluation
+
+This gives the submission a minimal but real training story beyond static environment code.
+
 ## Inference Entry Point
 
 The required submission entrypoint is root-level `inference.py`.
@@ -306,3 +423,15 @@ Then inspect:
 type outputs\inference_last_run.json
 type outputs\train_eval_report.json
 ```
+
+Current local verification status in this workspace:
+
+- `pytest -q`: passed locally
+- `openenv validate .`: passed locally
+
+Recommended final submission checklist:
+
+- update the `TODO` submission links above
+- export a before/after metrics table from `train_and_evaluate.py` and the Colab notebook
+- save reward or evaluation plots into the repo or link them from the README
+- deploy the environment to a Hugging Face Space and link it here
