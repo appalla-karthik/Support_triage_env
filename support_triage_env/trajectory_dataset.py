@@ -216,11 +216,15 @@ def _teacher_action(env: SupportTriageSimulator, observation_payload: dict[str, 
     )
 
 
-def _observation_prompt(observation_payload: dict[str, Any]) -> str:
+def _observation_prompt(
+    observation_payload: dict[str, Any],
+    state_payload: dict[str, Any] | None = None,
+) -> str:
     task = observation_payload.get("task") or {}
     queue = observation_payload.get("queue") or []
     world_summary = observation_payload.get("world_summary") or []
     recent_events = observation_payload.get("recent_events") or []
+    progress = observation_payload.get("progress") or (state_payload or {}).get("progress") or {}
 
     lines = [
         "You are an enterprise support triage agent.",
@@ -233,6 +237,25 @@ def _observation_prompt(observation_payload: dict[str, Any]) -> str:
     if observation_payload.get("policy_hints"):
         lines.append("Policy hints:")
         lines.extend(f"- {item}" for item in observation_payload["policy_hints"])
+    if progress:
+        lines.append("Progress:")
+        if "score" in progress:
+            lines.append(f"- score: {progress.get('score')}")
+        components = progress.get("components") or {}
+        if components:
+            lines.append("- components:")
+            for key, value in components.items():
+                lines.append(f"  - {key}: {value}")
+        penalties = progress.get("penalties") or {}
+        if penalties:
+            lines.append("- penalties:")
+            for key, value in penalties.items():
+                lines.append(f"  - {key}: {value}")
+        violations = progress.get("violations") or []
+        if violations:
+            lines.append("- violations:")
+            for item in violations:
+                lines.append(f"  - {item}")
     lines.append("Queue:")
     for ticket in queue:
         lines.append(
@@ -244,6 +267,8 @@ def _observation_prompt(observation_payload: dict[str, Any]) -> str:
                     "tier": ticket.get("customer_tier"),
                     "status": ticket.get("current_status"),
                     "sla_hours_remaining": ticket.get("sla_hours_remaining"),
+                    "tags": ticket.get("tags") or [],
+                    "workspace_id": ticket.get("workspace_id"),
                     "latest_customer_message": ticket.get("latest_customer_message"),
                 },
                 ensure_ascii=False,
@@ -258,6 +283,22 @@ def _observation_prompt(observation_payload: dict[str, Any]) -> str:
     if observation_payload.get("last_tool_result"):
         lines.append("Latest tool result:")
         lines.append(json.dumps(observation_payload["last_tool_result"], ensure_ascii=False))
+    history = (state_payload or {}).get("action_history") or []
+    if history:
+        lines.append("Action history (most recent last):")
+        # Keep this short so SFT prompts do not blow up in token count.
+        for entry in history[-8:]:
+            lines.append(
+                "- "
+                + json.dumps(
+                    {
+                        "step_number": entry.get("step_number"),
+                        "action_type": entry.get("action_type"),
+                        "ticket_id": entry.get("ticket_id"),
+                    },
+                    ensure_ascii=False,
+                )
+            )
     lines.append("Return only the next valid JSON action.")
     return "\n".join(lines)
 
@@ -281,10 +322,12 @@ def build_trajectory_dataset(
 
             while not done:
                 observation_payload = observation.model_dump(mode="json")
+                state_before = env.state().model_dump(mode="json")
                 action = _teacher_action(env, observation_payload)
                 action_payload = action.model_dump(mode="json", exclude_none=True)
                 next_observation, reward, done, info = env.step(action)
                 state_payload = info.get("state") or env.state().model_dump(mode="json")
+                progress_after = (next_observation.model_dump(mode="json").get("progress") if next_observation else None) or state_payload.get("progress")
 
                 row = {
                     "dataset_type": "support_triage_trajectory",
@@ -293,9 +336,11 @@ def build_trajectory_dataset(
                     "episode_id": state_payload.get("episode_id"),
                     "step_index": state_payload.get("step_count", 1) - 1,
                     "observation": observation_payload,
+                    "state_before": state_before,
                     "action": action_payload,
                     "reward": reward.value,
                     "score_after_step": state_payload.get("final_score"),
+                    "progress_after_step": progress_after,
                     "done": done,
                 }
                 if output_format == "sft":
@@ -304,9 +349,12 @@ def build_trajectory_dataset(
                         "task_id": task_id,
                         "scenario_seed": scenario_seed,
                         "step_index": row["step_index"],
-                        "text": _observation_prompt(observation_payload)
+                        "text": _observation_prompt(observation_payload, state_before)
                         + "\n\nResponse:\n"
                         + json.dumps(action_payload, ensure_ascii=False),
+                        "reward": reward.value,
+                        "done": done,
+                        "progress_after_step": progress_after,
                     }
                 episode_rows.append(row)
                 observation = next_observation
