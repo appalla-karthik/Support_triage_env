@@ -1,0 +1,67 @@
+---
+title: Overview
+description: What Support_triage_env is, why it matters, and how this documentation is organized.
+sidebar_position: 1
+---
+
+# Support Triage Env
+
+`Support_triage_env` is an OpenEnv-compatible customer support triage simulator.
+It is designed to evaluate and train agents on a realistic business workflow:
+
+- reading a queue of support tickets
+- classifying the issue correctly
+- prioritizing urgent work
+- drafting policy-safe customer replies
+- routing tickets to the right internal team
+- deciding whether to escalate or resolve
+
+This documentation site lives at the workspace root and focuses on the project in
+`Support_triage_env/`.
+
+## What already exists in the repo
+
+The current project is more than a sketch:
+
+- a typed action, observation, reward, and state model
+- a simulator with `reset`, `step`, and `state`
+- ten seeded task families with deterministic graders
+- an OpenEnv/FastAPI server
+- a competition-style `inference.py` entrypoint
+- synthetic dataset generation, trajectory generation, and a lightweight classifier baseline
+- an Unsloth + TRL Colab notebook for minimal post-training
+- tests for simulator, inference policy, logging, and data generation
+
+## Fast conclusion
+
+After reviewing the repository and the Round 2 themes, the strongest fit is:
+
+1. **Theme 3.1: World Modeling across professional tasks**
+2. **Theme 2: Long-Horizon Planning and Instruction Following**
+3. **Optional expansion into Theme 1: Multi-Agent Interactions**
+
+It is **not yet strongest as a pure Self-Improvement submission**, although it can
+borrow self-improving ideas later through adaptive scenario generation.
+
+## Recommended submission framing
+
+The best way to pitch this project is:
+
+> A policy-aware support operations environment where an agent must manage a
+> partially observable enterprise queue, coordinate correct routing and customer
+> communication, and optimize for safe outcomes under delayed business impact.
+
+That framing is grounded in what the repo already does, while leaving room for a
+stronger pivot into longer-horizon and multi-actor workflows.
+
+## Documentation map
+
+- **Project Overview**: what the codebase does today
+- **Architecture**: how the simulator, server, and inference pipeline fit together
+- **Environment Loop**: tasks, state transitions, and OpenEnv interfaces
+- **Reward and Evaluation**: how scoring and penalties work
+- **Training and Submission**: datasets, baselines, inference, validation
+- **Hackathon Fit**: where this project fits best among the Round 2 themes
+- **Problem Statement**: a polished submission-ready framing
+- **Pivot Strategy**: how to turn this into a stronger and more unique finalist pitch
+- **Judging and Demo**: how to present it for judges

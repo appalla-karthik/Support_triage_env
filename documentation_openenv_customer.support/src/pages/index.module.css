@@ -1,0 +1,196 @@
+/**
+ * CSS files with the .module.css suffix will be treated as CSS modules
+ * and scoped locally.
+ */
+
+.heroBanner {
+  padding: 5rem 0 2rem;
+  background:
+    radial-gradient(circle at top left, rgba(221, 119, 84, 0.14), transparent 30%),
+    radial-gradient(circle at top right, rgba(25, 116, 210, 0.12), transparent 26%),
+    linear-gradient(180deg, #f6f1e8 0%, #fbf8f3 55%, #ffffff 100%);
+}
+
+.heroShell {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+  gap: 1.5rem;
+  align-items: stretch;
+}
+
+.heroCopy {
+  display: grid;
+  gap: 1rem;
+  align-content: center;
+}
+
+.eyebrow {
+  display: inline-flex;
+  width: fit-content;
+  padding: 0.45rem 0.8rem;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 700;
+  background: rgba(9, 85, 150, 0.08);
+  color: #12507f;
+}
+
+.heroTitle {
+  margin: 0;
+  font-size: clamp(2.7rem, 5vw, 4.7rem);
+  line-height: 0.95;
+  letter-spacing: -0.04em;
+}
+
+.heroSubtitle {
+  margin: 0;
+  font-size: 1.12rem;
+  line-height: 1.8;
+  max-width: 48rem;
+  color: var(--ifm-color-emphasis-700);
+}
+
+.buttonRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.85rem;
+  align-items: center;
+}
+
+.heroPanel {
+  display: grid;
+  gap: 1rem;
+}
+
+.metricCard,
+.metricTile,
+.ribbon,
+.calloutBox {
+  border: 1px solid rgba(11, 59, 93, 0.12);
+  box-shadow: 0 26px 60px rgba(15, 34, 50, 0.08);
+}
+
+.metricCard {
+  border-radius: 1.6rem;
+  padding: 1.35rem;
+  background: linear-gradient(160deg, #163b60 0%, #245674 100%);
+  color: #f6f6f1;
+}
+
+.metricCard span,
+.metricTile span,
+.calloutLabel {
+  display: block;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.metricCard strong {
+  display: block;
+  margin-top: 0.45rem;
+  font-size: 1.5rem;
+  line-height: 1.2;
+}
+
+.metricCard p {
+  margin: 0.7rem 0 0;
+  color: rgba(246, 246, 241, 0.88);
+  line-height: 1.7;
+}
+
+.metricGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.metricTile {
+  min-height: 9rem;
+  border-radius: 1.3rem;
+  padding: 1.1rem;
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.metricTile strong {
+  display: block;
+  margin-top: 0.45rem;
+  font-size: 1.15rem;
+  line-height: 1.3;
+  color: #153149;
+}
+
+.ribbonRow {
+  margin-top: 1.25rem;
+}
+
+.ribbon {
+  border-radius: 1.4rem;
+  padding: 1.1rem 1.25rem;
+  background: rgba(255, 255, 255, 0.88);
+}
+
+.ribbon span {
+  display: block;
+  font-weight: 700;
+  color: #0d4b78;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.78rem;
+}
+
+.ribbon p {
+  margin: 0.45rem 0 0;
+  line-height: 1.75;
+}
+
+.calloutSection {
+  padding: 0 0 5rem;
+}
+
+.calloutBox {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1.2rem;
+  align-items: center;
+  padding: 1.5rem;
+  border-radius: 1.5rem;
+  background: linear-gradient(135deg, #f8efe6 0%, #ffffff 100%);
+}
+
+.calloutTitle {
+  margin: 0.35rem 0 0;
+  font-size: clamp(1.55rem, 2.4vw, 2.1rem);
+  line-height: 1.3;
+}
+
+.calloutActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  justify-content: flex-end;
+}
+
+@media screen and (max-width: 996px) {
+  .heroBanner {
+    padding: 3.5rem 0 1.5rem;
+  }
+
+  .heroShell,
+  .calloutBox {
+    grid-template-columns: 1fr;
+  }
+
+  .calloutActions {
+    justify-content: flex-start;
+  }
+}
+
+@media screen and (max-width: 680px) {
+  .metricGrid {
+    grid-template-columns: 1fr;
+  }
+}

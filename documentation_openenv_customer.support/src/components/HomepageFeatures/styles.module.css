@@ -1,0 +1,49 @@
+.features {
+  padding: 2rem 0 3rem;
+  width: 100%;
+}
+
+.sectionIntro {
+  margin-bottom: 1.5rem;
+}
+
+.sectionIntro p {
+  margin: 0 0 0.4rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #0d4b78;
+}
+
+.sectionIntro h2 {
+  margin: 0;
+  font-size: clamp(1.7rem, 2.6vw, 2.3rem);
+}
+
+.featureCard {
+  height: 100%;
+  border: 1px solid rgba(11, 59, 93, 0.12);
+  border-radius: 1.4rem;
+  padding: 1.25rem;
+  background: linear-gradient(180deg, #ffffff 0%, #fbf7f0 100%);
+  box-shadow: 0 22px 46px rgba(15, 34, 50, 0.06);
+}
+
+.featureKicker {
+  margin-bottom: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #0d4b78;
+}
+
+.featureCard h3 {
+  margin-bottom: 0.65rem;
+}
+
+.featureCard p {
+  margin: 0;
+  line-height: 1.75;
+}
