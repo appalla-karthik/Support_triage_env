@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from openenv.core.env_server.http_server import create_app
+from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, Response
 
 from support_triage_env.models import SupportTriageAction, SupportTriageObservation
@@ -17,6 +20,15 @@ app = create_app(
     max_concurrent_envs=8,
 )
 
+PROJECT_DOCS_BUILD_DIR = Path(__file__).resolve().parent.parent / "documentation-customer_support" / "build"
+
+if PROJECT_DOCS_BUILD_DIR.exists():
+    app.mount(
+        "/project-docs",
+        StaticFiles(directory=str(PROJECT_DOCS_BUILD_DIR), html=True),
+        name="project-docs",
+    )
+
 
 @app.get("/", response_class=HTMLResponse, include_in_schema=False)
 async def root() -> str:
@@ -27,46 +39,198 @@ async def root() -> str:
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>TriageOS Enterprise Workflow Environment</title>
+    <link rel="icon" href="data:," />
     <style>
       :root {
-        color-scheme: light;
-        --bg: #f4f1eb;
-        --bg-soft: #fbf8f3;
-        --panel: rgba(255, 255, 255, 0.88);
-        --panel-strong: #ffffff;
-        --panel-muted: #f7f3ee;
-        --ink: #191816;
-        --muted: #67635d;
-        --muted-strong: #504c47;
-        --accent: #232d3b;
-        --accent-soft: #eef1f5;
-        --line: rgba(25, 24, 22, 0.09);
-        --line-strong: rgba(25, 24, 22, 0.15);
-        --success: #2f6f55;
-        --warning: #9a6730;
-        --shadow: 0 16px 40px rgba(20, 22, 25, 0.06);
-        --shadow-soft: 0 6px 20px rgba(20, 22, 25, 0.04);
+        color-scheme: dark;
+        --bg: #090b10;
+        --bg-soft: #111725;
+        --panel: rgba(16, 21, 32, 0.94);
+        --panel-strong: #161d2c;
+        --panel-muted: #1a2334;
+        --ink: #f4f7fb;
+        --muted: #94a2b8;
+        --muted-strong: #d6deea;
+        --accent: #7d8cff;
+        --accent-soft: rgba(125, 140, 255, 0.14);
+        --line: rgba(162, 180, 212, 0.12);
+        --line-strong: rgba(162, 180, 212, 0.2);
+        --success: #31d0aa;
+        --warning: #ffb648;
+        --shadow: 0 28px 80px rgba(0, 0, 0, 0.52);
+        --shadow-soft: 0 12px 30px rgba(0, 0, 0, 0.3);
       }
       * { box-sizing: border-box; }
       body {
         margin: 0;
-        font-family: "Aptos", "Segoe UI Variable", "Segoe UI", sans-serif;
+        font-family: "Segoe UI Variable", "Segoe UI", "Inter", sans-serif;
         background:
-          radial-gradient(circle at top left, rgba(218, 208, 192, 0.34), transparent 28%),
-          radial-gradient(circle at top right, rgba(224, 229, 236, 0.52), transparent 24%),
-          linear-gradient(180deg, #f7f4ef 0%, #f0ece6 100%);
+          radial-gradient(circle at top left, rgba(125, 140, 255, 0.14), transparent 28%),
+          radial-gradient(circle at bottom right, rgba(56, 214, 255, 0.1), transparent 26%),
+          linear-gradient(180deg, #090b10 0%, #0e1219 100%);
         color: var(--ink);
+        transition: background 180ms ease, color 180ms ease;
       }
       main {
-        max-width: 1600px;
+        max-width: 1680px;
         margin: 0 auto;
-        padding: 20px 20px 28px;
+        padding: 24px 24px 30px;
+      }
+      .dashboard-shell {
+        display: grid;
+        grid-template-columns: 82px minmax(0, 1fr);
+        gap: 18px;
+        align-items: start;
+      }
+      body.sidebar-expanded .dashboard-shell {
+        grid-template-columns: 220px minmax(0, 1fr);
+      }
+      .nav-rail {
+        position: sticky;
+        top: 24px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 14px;
+        min-height: calc(100vh - 48px);
+        padding: 18px 12px;
+        border-radius: 28px;
+        border: 1px solid var(--line);
+        background: linear-gradient(180deg, rgba(8, 10, 16, 0.98), rgba(13, 17, 26, 0.96));
+        box-shadow: var(--shadow-soft);
+        transition: width 180ms ease, padding 180ms ease, border-color 180ms ease, background 180ms ease;
+      }
+      body.sidebar-expanded .nav-rail {
+        align-items: stretch;
+        padding: 18px 14px;
+      }
+      .rail-top {
+        display: grid;
+        gap: 12px;
+        justify-items: center;
+      }
+      body.sidebar-expanded .rail-top {
+        justify-items: stretch;
+      }
+      .rail-brand,
+      .rail-link,
+      .rail-toggle,
+      .rail-avatar {
+        width: 44px;
+        height: 44px;
+        border-radius: 14px;
+        display: grid;
+        place-items: center;
+      }
+      body.sidebar-expanded .rail-brand,
+      body.sidebar-expanded .rail-link,
+      body.sidebar-expanded .rail-toggle,
+      body.sidebar-expanded .rail-avatar {
+        width: 100%;
+      }
+      .rail-brand {
+        background: radial-gradient(circle at 30% 30%, #9aa7ff, #6474ff 60%, #3944d0 100%);
+        color: white;
+        font-size: 14px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        box-shadow: 0 10px 24px rgba(100, 116, 255, 0.35);
+      }
+      .rail-toggle {
+        border: 1px solid transparent;
+        background: rgba(255, 255, 255, 0.03);
+        color: var(--muted-strong);
+        cursor: pointer;
+        transition: transform 120ms ease, background 120ms ease, border-color 120ms ease, color 120ms ease;
+      }
+      .rail-toggle:hover {
+        transform: translateY(-1px);
+        background: rgba(255, 255, 255, 0.07);
+        border-color: rgba(125, 140, 255, 0.24);
+        color: #ffffff;
+      }
+      .rail-toggle .rail-code,
+      .rail-toggle .rail-glyph {
+        font-size: 0;
+      }
+      .rail-toggle .rail-code::before,
+      .rail-toggle .rail-glyph::before {
+        content: "|||";
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0.02em;
+      }
+      .rail-link {
+        border: 1px solid transparent;
+        background: rgba(255, 255, 255, 0.03);
+        color: var(--muted-strong);
+        text-decoration: none;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        transition: transform 120ms ease, background 120ms ease, border-color 120ms ease, color 120ms ease;
+      }
+      .rail-link:hover {
+        transform: translateY(-1px);
+      }
+      .rail-link.active,
+      .rail-link:hover {
+        background: linear-gradient(180deg, rgba(125, 140, 255, 0.2), rgba(56, 214, 255, 0.12));
+        border-color: rgba(125, 140, 255, 0.26);
+        color: #ffffff;
+      }
+      body.sidebar-expanded .rail-link,
+      body.sidebar-expanded .rail-toggle,
+      body.sidebar-expanded .rail-avatar,
+      body.sidebar-expanded .rail-brand {
+        grid-template-columns: 28px minmax(0, 1fr);
+        justify-items: start;
+        padding: 0 14px;
+      }
+      .rail-code,
+      .rail-label,
+      .rail-brand-text {
+        line-height: 1;
+      }
+      .rail-label,
+      .rail-brand-text,
+      .rail-glyph {
+        display: none;
+      }
+      body.sidebar-expanded .rail-label,
+      body.sidebar-expanded .rail-brand-text,
+      body.sidebar-expanded .rail-glyph {
+        display: inline;
+      }
+      body.sidebar-expanded .rail-code.compact-only {
+        display: none;
+      }
+      .rail-glyph {
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+      }
+      .rail-label,
+      .rail-brand-text {
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        white-space: nowrap;
+      }
+      .rail-spacer {
+        flex: 1;
+      }
+      .rail-avatar {
+        background: linear-gradient(180deg, rgba(255, 95, 115, 0.24), rgba(125, 140, 255, 0.16));
+        color: white;
+        font-weight: 700;
+        border: 1px solid rgba(255, 255, 255, 0.08);
       }
       .shell {
         position: relative;
-        background: rgba(255, 255, 255, 0.84);
-        border: 1px solid rgba(255, 255, 255, 0.65);
-        border-radius: 28px;
+        background: linear-gradient(180deg, rgba(9, 12, 18, 0.98), rgba(13, 17, 26, 0.98));
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 30px;
         box-shadow: var(--shadow);
         overflow: hidden;
       }
@@ -75,7 +239,7 @@ async def root() -> str:
         position: absolute;
         inset: 0 0 auto 0;
         height: 1px;
-        background: linear-gradient(90deg, transparent, rgba(35, 45, 59, 0.18), transparent);
+        background: linear-gradient(90deg, transparent, rgba(125, 140, 255, 0.2), transparent);
       }
       .topbar {
         display: grid;
@@ -84,11 +248,133 @@ async def root() -> str:
         padding: 28px 28px 24px;
         border-bottom: 1px solid var(--line);
         background:
-          linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(249, 246, 240, 0.56));
+          radial-gradient(circle at top right, rgba(125, 140, 255, 0.12), transparent 28%),
+          linear-gradient(180deg, rgba(14, 18, 27, 0.98), rgba(9, 12, 18, 0.96));
       }
       .hero-copy {
         display: grid;
         gap: 18px;
+      }
+      .brand-row {
+        display: grid;
+        grid-template-columns: 220px minmax(0, 1fr);
+        gap: 18px;
+        align-items: center;
+      }
+      .brand-lockup {
+        display: inline-flex;
+        align-items: center;
+        gap: 12px;
+        color: #ffffff;
+        font-size: 15px;
+        font-weight: 700;
+      }
+      .brand-lockup span:last-child {
+        color: inherit;
+      }
+      .brand-mark {
+        width: 28px;
+        height: 28px;
+        border-radius: 10px;
+        display: grid;
+        place-items: center;
+        background: linear-gradient(180deg, #7d8cff, #9d52ff);
+        box-shadow: 0 8px 16px rgba(125, 140, 255, 0.22);
+        font-size: 11px;
+      }
+      .search-shell {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-height: 48px;
+        padding: 0 14px;
+        border-radius: 16px;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.04);
+        color: var(--muted);
+        min-width: 0;
+      }
+      .search-label {
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--muted);
+      }
+      .search-shell input {
+        border: 0;
+        background: transparent;
+        padding: 0;
+        box-shadow: none;
+        color: var(--ink);
+      }
+      .search-shell input:focus {
+        box-shadow: none;
+      }
+      .hero-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        flex-wrap: nowrap;
+      }
+      .header-actions {
+        display: inline-flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: nowrap;
+        justify-content: flex-end;
+        flex-shrink: 0;
+      }
+      .theme-toggle {
+        min-width: 132px;
+        width: auto;
+        white-space: nowrap;
+      }
+      .header-icon {
+        min-width: 46px;
+        height: 46px;
+        border-radius: 14px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.04);
+        color: var(--muted-strong);
+        padding: 0 14px;
+        font-size: 13px;
+        font-weight: 600;
+      }
+      .profile-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 12px;
+        padding: 8px 12px;
+        border-radius: 16px;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.04);
+        min-height: 54px;
+        flex-shrink: 0;
+      }
+      .profile-avatar {
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        background: linear-gradient(180deg, #ffb648, #ff6a6f);
+        color: #fff;
+        font-weight: 700;
+      }
+      .profile-copy strong {
+        display: block;
+        font-size: 14px;
+        color: #fff;
+      }
+      .profile-copy span {
+        display: block;
+        font-size: 12px;
+        color: var(--muted);
       }
       .eyebrow {
         display: inline-flex;
@@ -97,9 +383,9 @@ async def root() -> str:
         width: fit-content;
         padding: 7px 12px;
         border-radius: 999px;
-        border: 1px solid rgba(35, 45, 59, 0.08);
-        background: rgba(255, 255, 255, 0.68);
-        color: var(--accent);
+        border: 1px solid rgba(125, 140, 255, 0.16);
+        background: rgba(125, 140, 255, 0.1);
+        color: #dbe3ff;
         font-size: 11px;
         font-weight: 700;
         text-transform: uppercase;
@@ -110,14 +396,14 @@ async def root() -> str:
         height: 8px;
         border-radius: 50%;
         background: var(--success);
-        box-shadow: 0 0 0 3px rgba(47, 111, 85, 0.1);
+        box-shadow: 0 0 0 4px rgba(49, 208, 170, 0.14);
       }
       h1 {
         margin: 0;
-        font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
-        font-size: 62px;
+        font-family: "Segoe UI Variable", "Segoe UI", "Inter", sans-serif;
+        font-size: 54px;
         line-height: 0.92;
-        letter-spacing: -1.2px;
+        letter-spacing: -1.6px;
         max-width: none;
       }
       .headline {
@@ -129,11 +415,10 @@ async def root() -> str:
         display: block;
       }
       .headline-sub {
-        font-family: "Aptos", "Segoe UI Variable", "Segoe UI", sans-serif;
-        font-size: 23px;
+        font-size: 20px;
         font-weight: 600;
         letter-spacing: -0.35px;
-        color: var(--muted-strong);
+        color: var(--muted);
         margin-top: 8px;
       }
       .subtitle {
@@ -151,7 +436,7 @@ async def root() -> str:
       }
       .hero-grid {
         display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-columns: repeat(4, minmax(0, 1fr));
         gap: 12px;
       }
       .mini-card {
@@ -223,10 +508,14 @@ async def root() -> str:
       }
       .layout {
         display: grid;
-        grid-template-columns: minmax(0, 1.45fr) 340px;
+        grid-template-columns: minmax(280px, 320px) minmax(0, 1fr);
         align-items: start;
         gap: 18px;
         padding: 18px;
+      }
+      .playground {
+        min-width: 0;
+        grid-column: 2;
       }
       .sidebar {
         display: grid;
@@ -234,13 +523,296 @@ async def root() -> str:
         position: sticky;
         top: 18px;
         align-self: start;
+        width: 100%;
+        min-width: 0;
+        grid-column: 1;
+        grid-row: 1;
+      }
+      .menu-list {
+        display: grid;
+        gap: 8px;
+        margin-top: 6px;
+      }
+      .menu-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        width: 100%;
+        padding: 12px 14px;
+        border-radius: 14px;
+        border: 1px solid transparent;
+        background: rgba(255, 255, 255, 0.03);
+        color: var(--muted-strong);
+        font-weight: 600;
+        cursor: pointer;
+        text-align: left;
+      }
+      .menu-item.active {
+        background: linear-gradient(180deg, rgba(157, 82, 255, 0.8), rgba(106, 91, 255, 0.8));
+        color: #fff;
+        box-shadow: 0 14px 26px rgba(125, 83, 255, 0.24);
+      }
+      .menu-icon {
+        opacity: 0.9;
+      }
+      .support-card {
+        display: grid;
+        gap: 12px;
+      }
+      body[data-theme="light"] {
+        --bg: #eef3ff;
+        --bg-soft: #f7f9ff;
+        --panel: rgba(255, 255, 255, 0.92);
+        --panel-strong: #ffffff;
+        --panel-muted: #eef2ff;
+        --ink: #1d2433;
+        --muted: #63708a;
+        --muted-strong: #2a3550;
+        --accent: #6f59ff;
+        --accent-soft: rgba(111, 89, 255, 0.12);
+        --line: rgba(73, 95, 135, 0.14);
+        --line-strong: rgba(73, 95, 135, 0.22);
+        --success: #21b990;
+        --warning: #e59f32;
+        --shadow: 0 28px 80px rgba(50, 63, 96, 0.16);
+        --shadow-soft: 0 12px 30px rgba(50, 63, 96, 0.12);
+      }
+      body[data-theme="light"] {
+        background:
+          radial-gradient(circle at top left, rgba(111, 89, 255, 0.12), transparent 26%),
+          radial-gradient(circle at bottom right, rgba(56, 214, 255, 0.12), transparent 24%),
+          linear-gradient(180deg, #f7f9ff 0%, #edf2ff 100%);
+      }
+      body[data-theme="light"] .nav-rail,
+      body[data-theme="light"] .shell,
+      body[data-theme="light"] .topbar,
+      body[data-theme="light"] .panel,
+      body[data-theme="light"] .summary-card,
+      body[data-theme="light"] .control-card,
+      body[data-theme="light"] .note-card,
+      body[data-theme="light"] .json-box,
+      body[data-theme="light"] .mini-card,
+      body[data-theme="light"] .status-card,
+      body[data-theme="light"] .pill,
+      body[data-theme="light"] .quick-code,
+      body[data-theme="light"] .search-shell,
+      body[data-theme="light"] .profile-pill,
+      body[data-theme="light"] .header-icon,
+      body[data-theme="light"] .menu-item,
+      body[data-theme="light"] .follow-toggle,
+      body[data-theme="light"] .conversation-select,
+      body[data-theme="light"] .conversation-chip,
+      body[data-theme="light"] .chat-bubble,
+      body[data-theme="light"] .activity-entry,
+      body[data-theme="light"] .activity-empty,
+      body[data-theme="light"] .service-metric {
+        background: rgba(255, 255, 255, 0.82);
+        color: var(--ink);
+      }
+      body[data-theme="light"] .search-shell input,
+      body[data-theme="light"] .search-label,
+      body[data-theme="light"] .header-icon,
+      body[data-theme="light"] .theme-toggle,
+      body[data-theme="light"] .summary-card span,
+      body[data-theme="light"] .mini-card span,
+      body[data-theme="light"] .panel h2,
+      body[data-theme="light"] .panel h3,
+      body[data-theme="light"] .json-box header strong,
+      body[data-theme="light"] pre,
+      body[data-theme="light"] .quick-code,
+      body[data-theme="light"] .conversation-chip,
+      body[data-theme="light"] .chat-bubble p,
+      body[data-theme="light"] .headline-mark,
+      body[data-theme="light"] .section-kicker,
+      body[data-theme="light"] .conversation-label,
+      body[data-theme="light"] .message-role,
+      body[data-theme="light"] .activity-head strong,
+      body[data-theme="light"] .activity-body strong,
+      body[data-theme="light"] .activity-step,
+      body[data-theme="light"] .message-meta,
+      body[data-theme="light"] .message-role,
+      body[data-theme="light"] .message-ticket,
+      body[data-theme="light"] .follow-toggle,
+      body[data-theme="light"] .conversation-caption {
+        color: #1d2433;
+      }
+      body[data-theme="light"] #conversation-ticket,
+      body[data-theme="light"] #customer-meta,
+      body[data-theme="light"] #agent-meta,
+      body[data-theme="light"] #agent-role,
+      body[data-theme="light"] #customer-role {
+        color: #33415c;
+      }
+      body[data-theme="light"] textarea {
+        background: #1b1f27;
+        color: #e6edff;
+        border-color: rgba(73, 95, 135, 0.22);
+      }
+      body[data-theme="light"] select {
+        color-scheme: light;
+        background:
+          linear-gradient(45deg, transparent 50%, rgba(68, 80, 106, 0.8) 50%),
+          linear-gradient(135deg, rgba(68, 80, 106, 0.8) 50%, transparent 50%),
+          linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(243, 247, 255, 0.98));
+        background-position:
+          calc(100% - 18px) calc(50% - 3px),
+          calc(100% - 12px) calc(50% - 3px),
+          0 0;
+        background-size: 6px 6px, 6px 6px, 100% 100%;
+        background-repeat: no-repeat;
+        border-color: rgba(73, 95, 135, 0.18);
+        color: #1d2433;
+      }
+      body[data-theme="light"] select option {
+        background: #ffffff;
+        color: #1d2433;
+      }
+      body[data-theme="light"] textarea::placeholder {
+        color: #93a0ba;
+      }
+      body[data-theme="light"] .status-card strong,
+      body[data-theme="light"] .status-card p,
+      body[data-theme="light"] .status-list,
+      body[data-theme="light"] .service-metric strong,
+      body[data-theme="light"] .service-metric span,
+      body[data-theme="light"] .activity-head span,
+      body[data-theme="light"] .activity-body p,
+      body[data-theme="light"] .activity-empty,
+      body[data-theme="light"] .chat-bubble.empty p,
+      body[data-theme="light"] .conversation-select:disabled {
+        color: #4a5a78;
+      }
+      body[data-theme="light"] .message-row.agent .message-role,
+      body[data-theme="light"] .message-row.agent .message-ticket,
+      body[data-theme="light"] .message-row .message-ticket,
+      body[data-theme="light"] .message-row .message-role {
+        color: #51637f;
+      }
+      body[data-theme="light"] .conversation-select:disabled {
+        -webkit-text-fill-color: #4a5a78;
+        border-color: rgba(73, 95, 135, 0.18);
+        background:
+          linear-gradient(45deg, transparent 50%, rgba(68, 80, 106, 0.6) 50%),
+          linear-gradient(135deg, rgba(68, 80, 106, 0.6) 50%, transparent 50%),
+          linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(243, 247, 255, 0.96));
+        background-position:
+          calc(100% - 18px) calc(50% - 3px),
+          calc(100% - 12px) calc(50% - 3px),
+          0 0;
+        background-size: 6px 6px, 6px 6px, 100% 100%;
+        background-repeat: no-repeat;
+      }
+      body[data-theme="light"] .conversation-panel {
+        background:
+          radial-gradient(circle at top left, rgba(111, 89, 255, 0.12), transparent 28%),
+          radial-gradient(circle at right center, rgba(56, 214, 255, 0.1), transparent 32%),
+          linear-gradient(180deg, #ffffff 0%, #edf2ff 100%);
+      }
+      body[data-theme="light"] .rail-link {
+        background: rgba(111, 89, 255, 0.08);
+        border-color: rgba(111, 89, 255, 0.14);
+        color: #44506a;
+      }
+      body[data-theme="light"] .rail-toggle {
+        background: rgba(111, 89, 255, 0.08);
+        border-color: rgba(111, 89, 255, 0.14);
+        color: #44506a;
+      }
+      body[data-theme="light"] .rail-link.active,
+      body[data-theme="light"] .rail-link:hover {
+        background: linear-gradient(180deg, rgba(111, 89, 255, 0.92), rgba(135, 93, 255, 0.88));
+        border-color: rgba(111, 89, 255, 0.32);
+        color: #ffffff;
+      }
+      body[data-theme="light"] .rail-toggle:hover {
+        background: rgba(111, 89, 255, 0.16);
+        border-color: rgba(111, 89, 255, 0.24);
+        color: #263248;
+      }
+      body[data-theme="light"] .brand-lockup,
+      body[data-theme="light"] .profile-copy strong,
+      body[data-theme="light"] .rail-link.active,
+      body[data-theme="light"] .menu-item.active,
+      body[data-theme="light"] .brand-mark,
+      body[data-theme="light"] .message-avatar {
+        color: #ffffff;
+      }
+      body[data-theme="light"] .subtitle,
+      body[data-theme="light"] .headline-sub,
+      body[data-theme="light"] .panel p,
+      body[data-theme="light"] .panel li,
+      body[data-theme="light"] label,
+      body[data-theme="light"] .helper,
+      body[data-theme="light"] .status-list,
+      body[data-theme="light"] .message-ticket,
+      body[data-theme="light"] .profile-copy span {
+        color: var(--muted);
+      }
+      body[data-theme="light"] .profile-pill,
+      body[data-theme="light"] .search-shell,
+      body[data-theme="light"] .header-icon,
+      body[data-theme="light"] .theme-toggle {
+        border-color: rgba(73, 95, 135, 0.18);
+      }
+      body[data-theme="light"] .menu-item {
+        background: rgba(255, 255, 255, 0.88);
+        color: #263248;
+      }
+      body[data-theme="light"] .menu-item.active {
+        background: linear-gradient(180deg, rgba(111, 89, 255, 0.94), rgba(135, 93, 255, 0.9));
+        color: #ffffff;
+      }
+      body[data-theme="light"] .eyebrow {
+        color: #6f59ff;
+        background: rgba(111, 89, 255, 0.08);
+      }
+      body[data-theme="light"] .conversation-panel h2 {
+        color: #1d2433 !important;
+      }
+      body[data-theme="light"] .brand-lockup,
+      body[data-theme="light"] .brand-lockup span:last-child,
+      body[data-theme="light"] .rail-brand-text {
+        color: #1d2433;
+      }
+      body[data-theme="light"] .runner-badge {
+        background: rgba(111, 89, 255, 0.1);
+        border-color: rgba(111, 89, 255, 0.18);
+        color: #44506a;
+      }
+      body[data-theme="light"] .message-avatar {
+        background: linear-gradient(180deg, rgba(111, 89, 255, 0.12), rgba(86, 214, 255, 0.08));
+        border-color: rgba(111, 89, 255, 0.16);
+        color: #3b4c67;
+      }
+      body[data-theme="light"] .message-row.agent .message-avatar {
+        background: linear-gradient(180deg, rgba(133, 158, 189, 0.22), rgba(102, 122, 149, 0.16));
+        border-color: rgba(102, 122, 149, 0.18);
+        color: #3b4c67;
+      }
+      .support-box {
+        border-radius: 18px;
+        padding: 18px;
+        border: 1px solid var(--line);
+        background: linear-gradient(180deg, rgba(125, 140, 255, 0.18), rgba(157, 82, 255, 0.14));
+      }
+      .support-box h3 {
+        margin: 0 0 8px;
+        font-size: 18px;
+      }
+      .support-box p {
+        margin: 0 0 14px;
+      }
+      .support-box .link-btn {
+        width: 100%;
       }
       .panel {
         border: 1px solid var(--line);
         border-radius: 24px;
         padding: 22px;
-        background: linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(249, 246, 241, 0.86));
+        background: linear-gradient(180deg, rgba(16, 21, 32, 0.98), rgba(11, 14, 22, 0.98));
         box-shadow: var(--shadow-soft);
+        min-width: 0;
       }
       .overview-card {
         padding: 20px;
@@ -326,6 +898,7 @@ async def root() -> str:
       .runner-panel {
         display: grid;
         gap: 18px;
+        overflow: hidden;
       }
       .runner-head {
         display: flex;
@@ -345,18 +918,21 @@ async def root() -> str:
         display: inline-flex;
         align-items: center;
         gap: 8px;
-        padding: 9px 12px;
+        min-height: 40px;
+        padding: 10px 16px;
         border-radius: 999px;
-        border: 1px solid var(--line);
-        background: rgba(255, 255, 255, 0.88);
-        color: var(--muted-strong);
+        border: 1px solid rgba(125, 140, 255, 0.14);
+        background: rgba(125, 140, 255, 0.08);
+        color: #dce5ff;
         font-size: 12px;
-        font-weight: 600;
+        font-weight: 700;
+        letter-spacing: 0.03em;
         white-space: nowrap;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
       }
       .summary-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+        grid-template-columns: repeat(4, minmax(0, 1fr));
         gap: 12px;
       }
       .summary-card {
@@ -399,7 +975,7 @@ async def root() -> str:
       }
       .control-grid {
         display: grid;
-        grid-template-columns: minmax(0, 1fr) 130px 190px;
+        grid-template-columns: minmax(0, 1.2fr) 140px 180px;
         gap: 12px;
       }
       .control-card {
@@ -413,7 +989,7 @@ async def root() -> str:
       }
       .editor-grid {
         display: grid;
-        grid-template-columns: minmax(0, 1.35fr) minmax(300px, 0.8fr);
+        grid-template-columns: minmax(0, 1.45fr) minmax(280px, 0.85fr);
         gap: 16px;
         margin-top: 16px;
       }
@@ -444,9 +1020,9 @@ async def root() -> str:
       button {
         font: inherit;
       }
-        select,
-        input,
-        textarea {
+      select,
+      input,
+      textarea {
         width: 100%;
         border: 1px solid rgba(25, 24, 22, 0.12);
         border-radius: 14px;
@@ -454,6 +1030,29 @@ async def root() -> str:
         background: rgba(255, 255, 255, 0.92);
         color: var(--ink);
         box-shadow: none;
+      }
+      select {
+        appearance: none;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        padding-right: 42px;
+        color-scheme: dark;
+        background:
+          linear-gradient(45deg, transparent 50%, rgba(219, 231, 255, 0.82) 50%),
+          linear-gradient(135deg, rgba(219, 231, 255, 0.82) 50%, transparent 50%),
+          linear-gradient(180deg, rgba(16, 21, 32, 0.96), rgba(11, 14, 22, 0.98));
+        background-position:
+          calc(100% - 18px) calc(50% - 3px),
+          calc(100% - 12px) calc(50% - 3px),
+          0 0;
+        background-size: 6px 6px, 6px 6px, 100% 100%;
+        background-repeat: no-repeat;
+        border-color: rgba(162, 180, 212, 0.16);
+        color: #eef4ff;
+      }
+      select option {
+        background: #121825;
+        color: #eef4ff;
       }
       select:focus,
       input:focus,
@@ -470,6 +1069,8 @@ async def root() -> str:
         font-size: 13px;
         line-height: 1.6;
         background: #faf8f5;
+        color: #dbe7ff;
+        caret-color: #ffffff;
       }
       button,
       .link-btn {
@@ -595,7 +1196,7 @@ async def root() -> str:
       }
       .json-grid {
         display: grid;
-        grid-template-columns: 1.05fr 0.95fr;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 16px;
       }
       .json-wide {
@@ -748,6 +1349,7 @@ async def root() -> str:
       .conversation-stream {
         display: grid;
         gap: 14px;
+        min-width: 0;
       }
       .message-row {
         display: grid;
@@ -831,6 +1433,7 @@ async def root() -> str:
         box-shadow:
           0 14px 30px rgba(8, 12, 20, 0.16),
           inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        overflow-wrap: anywhere;
       }
       .chat-bubble p {
         margin: 0;
@@ -957,26 +1560,212 @@ async def root() -> str:
         flex-wrap: wrap;
       }
       code {
-        background: #f1f1ee;
+        background: rgba(125, 140, 255, 0.12);
         border-radius: 8px;
         padding: 2px 6px;
-        color: var(--accent);
+        color: #c5d0ff;
+      }
+      .panel,
+      .summary-card,
+      .control-card,
+      .note-card,
+      .json-box,
+      .mini-card,
+      .status-card,
+      .conversation-panel,
+      .pill,
+      .quick-code {
+        backdrop-filter: blur(12px);
+      }
+      .panel,
+      .summary-card,
+      .control-card,
+      .note-card,
+      .json-box,
+      .mini-card,
+      .pill {
+        background: linear-gradient(180deg, rgba(16, 21, 32, 0.98), rgba(11, 14, 22, 0.98));
+      }
+      .panel,
+      .summary-card,
+      .control-card,
+      .note-card,
+      .json-box,
+      .mini-card,
+      .service-metric,
+      .pill,
+      .quick-code {
+        border-color: var(--line);
+      }
+      .status-card {
+        background: linear-gradient(180deg, rgba(16, 21, 32, 0.98), rgba(11, 14, 22, 0.98));
+      }
+      .mini-card strong,
+      .summary-card strong,
+      .helper,
+      .note-card strong,
+      .panel p,
+      .panel li,
+      label,
+      .status-list,
+      .subtitle,
+      .headline-sub,
+      .conversation-caption,
+      .activity-head span,
+      .message-ticket {
+        color: var(--muted);
+      }
+      .mini-card span,
+      .summary-card span,
+      .panel h2,
+      .status-card span,
+      .activity-head strong,
+      .message-role,
+      .conversation-chip,
+      .runner-badge,
+      .quick-code,
+      pre {
+        color: var(--ink);
+      }
+      .chip {
+        background: rgba(125, 140, 255, 0.1);
+        color: #dfe5ff;
+        border: 1px solid rgba(125, 140, 255, 0.16);
+      }
+      .quick-code,
+      .json-box,
+      .json-box header,
+      .control-card,
+      .note-card,
+      .summary-card,
+      .pill,
+      select,
+      input,
+      textarea,
+      button,
+      .link-btn,
+      .follow-toggle,
+      .conversation-select,
+      .conversation-chip,
+      .chat-bubble,
+      .activity-entry,
+      .activity-empty {
+        background-color: rgba(255, 255, 255, 0.04);
+      }
+      select,
+      input,
+      textarea {
+        border-color: rgba(162, 180, 212, 0.14);
+        color: var(--ink);
+      }
+      textarea {
+        background: rgba(7, 10, 16, 0.92);
+      }
+      button,
+      .link-btn {
+        border-color: rgba(162, 180, 212, 0.12);
+        color: var(--muted-strong);
+      }
+      button:hover,
+      .link-btn:hover {
+        border-color: rgba(125, 140, 255, 0.3);
+        background: rgba(125, 140, 255, 0.12);
+      }
+      button.primary {
+        background: linear-gradient(180deg, #6d7cff, #5262f1);
+        box-shadow: 0 14px 26px rgba(82, 98, 241, 0.32);
+        color: white;
+      }
+      .banner {
+        border-color: rgba(255, 182, 72, 0.2);
+        background: rgba(255, 182, 72, 0.08);
+        color: #ffd89f;
+      }
+      .banner strong,
+      .banner .hint,
+      .banner span {
+        color: inherit;
+      }
+      .service-metric {
+        background: rgba(255, 255, 255, 0.03);
+      }
+      .conversation-panel {
+        background:
+          radial-gradient(circle at top left, rgba(125, 140, 255, 0.16), transparent 28%),
+          radial-gradient(circle at right center, rgba(56, 214, 255, 0.12), transparent 32%),
+          linear-gradient(180deg, #111726 0%, #0b1019 100%);
+        border-color: rgba(162, 180, 212, 0.12);
+      }
+      .message-avatar {
+        background: linear-gradient(180deg, rgba(125, 140, 255, 0.32), rgba(56, 214, 255, 0.12));
+        border: 1px solid rgba(125, 140, 255, 0.22);
+        color: white;
+      }
+      .activity-entry {
+        border-color: rgba(162, 180, 212, 0.12);
+      }
+      .link-grid .link-btn {
+        text-align: center;
       }
       @media (max-width: 1320px) {
+        .dashboard-shell {
+          grid-template-columns: 1fr;
+        }
+        body.sidebar-expanded .dashboard-shell {
+          grid-template-columns: 1fr;
+        }
+        .nav-rail {
+          position: static;
+          min-height: auto;
+          flex-direction: row;
+          justify-content: center;
+          flex-wrap: wrap;
+        }
+        body.sidebar-expanded .nav-rail {
+          align-items: center;
+        }
+        body.sidebar-expanded .rail-top {
+          grid-auto-flow: column;
+          align-items: center;
+          justify-items: center;
+        }
+        body.sidebar-expanded .rail-link,
+        body.sidebar-expanded .rail-toggle,
+        body.sidebar-expanded .rail-avatar,
+        body.sidebar-expanded .rail-brand {
+          width: auto;
+          min-width: 44px;
+        }
+        body.sidebar-expanded .rail-label,
+        body.sidebar-expanded .rail-brand-text,
+        body.sidebar-expanded .rail-glyph {
+          display: none;
+        }
+        body.sidebar-expanded .rail-code.compact-only {
+          display: inline;
+        }
         .layout {
           grid-template-columns: 1fr;
         }
         .sidebar {
           position: static;
           grid-template-columns: repeat(2, minmax(0, 1fr));
+          grid-column: auto;
+          grid-row: auto;
+        }
+        .playground {
+          grid-column: auto;
         }
       }
       @media (max-width: 1180px) {
         .topbar {
           grid-template-columns: 1fr;
         }
-        .hero-grid {
+        .brand-row {
           grid-template-columns: 1fr;
+        }
+        .hero-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
         }
         .sidebar {
           position: static;
@@ -995,6 +1784,9 @@ async def root() -> str:
       @media (max-width: 980px) {
         .summary-grid,
         .editor-grid {
+          grid-template-columns: 1fr;
+        }
+        .hero-grid {
           grid-template-columns: 1fr;
         }
       }
@@ -1020,6 +1812,10 @@ async def root() -> str:
           align-items: start;
           flex-direction: column;
         }
+        .hero-header,
+        .header-actions {
+          flex-wrap: wrap;
+        }
         h1 {
           font-size: 36px;
         }
@@ -1031,82 +1827,144 @@ async def root() -> str:
   </head>
   <body>
     <main>
-      <section class="shell">
+      <div class="dashboard-shell">
+        <aside class="nav-rail" aria-label="Dashboard navigation">
+          <div class="rail-top">
+            <div class="rail-brand">
+              <span class="rail-code compact-only">TS</span>
+              <span class="rail-glyph">TS</span>
+              <span class="rail-brand-text">TriageOS</span>
+            </div>
+            <button class="rail-toggle" id="rail-toggle" type="button" aria-expanded="false" aria-label="Toggle sidebar">
+              <span class="rail-code compact-only">≡</span>
+              <span class="rail-glyph">≡</span>
+              <span class="rail-label">Toggle Menu</span>
+            </button>
+            <a class="rail-link active" href="#top" title="Dashboard">
+              <span class="rail-code compact-only">DB</span>
+              <span class="rail-glyph">DB</span>
+              <span class="rail-label">Dashboard</span>
+            </a>
+            <a class="rail-link" href="#tickets" title="Operations">
+              <span class="rail-code compact-only">OP</span>
+              <span class="rail-glyph">OP</span>
+              <span class="rail-label">Operations</span>
+            </a>
+            <a class="rail-link" href="#analytics" title="Inspectors">
+              <span class="rail-code compact-only">IN</span>
+              <span class="rail-glyph">IN</span>
+              <span class="rail-label">Inspectors</span>
+            </a>
+            <a class="rail-link" href="/api" title="API Docs">
+              <span class="rail-code compact-only">API</span>
+              <span class="rail-glyph">AP</span>
+              <span class="rail-label">API Docs</span>
+            </a>
+          </div>
+          <div class="rail-spacer"></div>
+          <div class="rail-avatar">
+            <span class="rail-code compact-only">AI</span>
+            <span class="rail-glyph">AI</span>
+            <span class="rail-label">Agent Intel</span>
+          </div>
+        </aside>
+      <section class="shell" id="top">
         <div class="topbar">
           <div class="hero-copy">
+            <div class="hero-header">
+              <div class="brand-row">
+                <div class="brand-lockup">
+                  <span class="brand-mark" aria-hidden="true"></span>
+                  <span>TriageOS</span>
+                </div>
+                <label class="search-shell">
+                  <span class="search-label">Search</span>
+                  <input type="search" placeholder="Workflows, tickets, tools" />
+                </label>
+              </div>
+              <div class="header-actions">
+                <button class="header-icon theme-toggle" id="theme-toggle" type="button">Light Mode</button>
+                <span class="profile-pill">
+                  <span class="profile-avatar">LC</span>
+                  <span class="profile-copy">
+                    <strong>Lily Carter</strong>
+                    <span id="service-meta">Loading metadata...</span>
+                  </span>
+                </span>
+              </div>
+            </div>
             <div class="eyebrow">
               <span class="status-dot"></span>
-              OpenEnv Console
+              Support Dashboard
             </div>
             <div class="headline">
               <h1>
-                <span class="headline-mark">TriageOS</span>
-                <span class="headline-sub">Enterprise Workflow Console</span>
+                <span class="headline-mark">Dashboard</span>
+                <span class="headline-sub">Enterprise support triage control center</span>
               </h1>
-            </div>
-            <p class="subtitle">
-              A production-style review surface for enterprise support workflows. Move from
-              queue intake to CRM, billing, incident, trust, and policy systems, then inspect
-              how each action changes reward, SLA pressure, and downstream operational risk.
-            </p>
-            <div class="hero-note">
-              <span class="chip">Theme 3.1 World Modeling</span>
-              <span class="chip">Multi-App Enterprise Workflow</span>
-              <span class="chip">Queue-Level Reward Logic</span>
             </div>
             <div class="hero-grid">
               <div class="mini-card">
-                <strong>Operating Model</strong>
-                <span>Queue -> systems -> outcomes</span>
-                <p>Measure routing judgment, escalation quality, and system-aware workflow reasoning in a partially observable enterprise setting.</p>
+                <strong>Total Reward</strong>
+                <span id="reward-text">0.00</span>
+                <p>Live environment reward across the active episode.</p>
               </div>
               <div class="mini-card">
-                <strong>Review Flow</strong>
-                <span>Reset, inspect, execute</span>
-                <p>Start a seeded episode, inspect the working state, and step through the workflow while the environment updates in real time.</p>
+                <strong>Active Score</strong>
+                <span id="score-text">0.01</span>
+                <p>Model score and quality trend for the current queue.</p>
               </div>
               <div class="mini-card">
-                <strong>Audit Surface</strong>
-                <span>Typed, visible, reviewable</span>
-                <p>Every run keeps raw responses, app snapshots, tool lookups, and schema context visible for direct technical review.</p>
+                <strong>Queue Health</strong>
+                <span id="queue-health-text">No queue loaded</span>
+                <p>Operational pressure across tickets, SLAs, and escalations.</p>
+              </div>
+              <div class="mini-card">
+                <strong>Step Count</strong>
+                <span id="steps-text">0</span>
+                <p>Progress toward finish for the current workflow run.</p>
               </div>
             </div>
           </div>
           <div class="status-card">
             <div>
-              <strong>Service Status</strong>
-              <span id="service-meta">Loading metadata...</span>
-              <p>This console is built for review sessions: one environment, one queue, clear state transitions, and traceable reward movement.</p>
+              <strong>Agent Workspace</strong>
+              <span>Support operations overview</span>
+              <p>Run one environment, inspect queue state, and step actions with a polished executive dashboard view.</p>
             </div>
             <div class="service-grid">
               <div class="service-metric">
                 <strong>Mode</strong>
-                <span>OpenEnv Runtime</span>
+                <span id="task-text">billing_refund_easy</span>
               </div>
               <div class="service-metric">
-                <strong>Surface</strong>
-                <span>Typed HTTP APIs</span>
+                <strong>Assigned Team</strong>
+                <span id="team-text">Unassigned</span>
               </div>
               <div class="service-metric">
-                <strong>Focus</strong>
-                <span>Enterprise Workflows</span>
+                <strong>Status</strong>
+                <span id="status-text">Ready</span>
               </div>
               <div class="service-metric">
-                <strong>Review</strong>
-                <span>Reward + State Trace</span>
+                <strong>Apps</strong>
+                <span id="apps-text">0</span>
+              </div>
+              <div class="service-metric">
+                <strong>Done</strong>
+                <span id="done-text">false</span>
               </div>
             </div>
             <ul class="status-list">
               <li><code>Reset</code> loads a fresh seeded scenario.</li>
-              <li><code>Suggested Action</code> proposes the next workflow move.</li>
-              <li><code>Step</code> updates score, queue health, and world state.</li>
+              <li><code>Suggested Action</code> keeps the next move ready.</li>
+              <li><code>Step</code> updates state, world summary, and tool results.</li>
             </ul>
           </div>
         </div>
 
         <div class="layout">
           <section class="playground">
-            <section class="panel conversation-panel">
+            <section class="panel conversation-panel" id="messages">
               <div class="conversation-header">
                 <div>
                   <span class="section-kicker">Customer Message</span>
@@ -1168,7 +2026,7 @@ async def root() -> str:
               </div>
             </section>
 
-            <div class="panel runner-panel">
+            <div class="panel runner-panel" id="tickets">
               <div class="runner-head">
                 <div class="runner-copy">
                   <span class="section-kicker">Interactive Runner</span>
@@ -1185,13 +2043,10 @@ async def root() -> str:
                 <div class="hint">Reset required</div>
               </div>
               <div class="summary-grid" style="margin-bottom: 12px;">
-                <div class="summary-card"><strong>Task</strong><span class="task-value" id="task-text">billing_refund_easy</span></div>
-                <div class="summary-card"><strong>Status</strong><span id="status-text">Ready</span></div>
-                <div class="summary-card"><strong>Reward</strong><span class="metric-value" id="reward-text">0.00</span></div>
-                <div class="summary-card"><strong>Score</strong><span class="metric-value" id="score-text">0.01</span></div>
-                <div class="summary-card"><strong>Steps</strong><span class="metric-value" id="steps-text">0</span></div>
-                <div class="summary-card"><strong>Apps</strong><span class="metric-value" id="apps-text">0</span></div>
-                <div class="summary-card"><strong>Queue Health</strong><span id="queue-health-text">No queue loaded</span></div>
+                <div class="summary-card"><strong>Task Family</strong><span class="task-value">Live workflow controls</span></div>
+                <div class="summary-card"><strong>Action State</strong><span>Ready for reset and manual JSON edits</span></div>
+                <div class="summary-card"><strong>Session Type</strong><span>Single environment review console</span></div>
+                <div class="summary-card"><strong>Output</strong><span>Trace, world summary, tools, schema</span></div>
               </div>
               <div class="control-grid">
                 <div class="control-card">
@@ -1221,6 +2076,12 @@ async def root() -> str:
 
               <div class="editor-grid">
                 <div>
+                  <div class="button-row action-row" style="margin: 0 0 12px;">
+                    <button class="primary" id="reset-btn" type="button">Reset</button>
+                    <button class="primary" id="step-btn" type="button">Step</button>
+                    <button id="state-btn" type="button">Get State</button>
+                    <button id="schema-btn" type="button">Refresh Schema</button>
+                  </div>
                   <label for="action-json">Action JSON</label>
                   <textarea id="action-json">{
   "action_type": "classify_ticket",
@@ -1243,18 +2104,12 @@ async def root() -> str:
                 </div>
               </div>
 
-              <div class="button-row action-row" style="margin-top: 12px;">
-                <button class="primary" id="reset-btn" type="button">Reset</button>
-                <button class="primary" id="step-btn" type="button">Step</button>
-                <button id="state-btn" type="button">Get State</button>
-                <button id="schema-btn" type="button">Refresh Schema</button>
-              </div>
               <div class="pill" style="margin-top: 12px;">
-                <span class="status-inline"><strong>Done</strong><span id="done-text">false</span></span>
+                <span class="status-inline"><strong>Console</strong><span>Runner ready for manual actions</span></span>
               </div>
             </div>
 
-            <div class="json-grid">
+            <div class="json-grid" id="analytics">
               <section class="json-box">
                 <header><strong>Response Trace</strong><span id="response-kind">idle</span></header>
                 <pre id="response-json">{}</pre>
@@ -1264,7 +2119,7 @@ async def root() -> str:
                 <pre id="state-json">{}</pre>
               </section>
             </div>
-            <div class="json-grid" style="margin-top: 14px;">
+            <div class="json-grid" style="margin-top: 14px;" id="incidents">
               <section class="json-box">
                 <header><strong>System Snapshots</strong><span id="apps-kind">idle</span></header>
                 <pre id="apps-json">[]</pre>
@@ -1287,50 +2142,34 @@ async def root() -> str:
           </section>
           <aside class="sidebar">
             <div class="panel overview-card">
-              <span class="section-kicker">Run Guide</span>
-              <h2>Review Sequence</h2>
-              <ol class="compact-list">
-                <li>Select a task family and press <code>Reset</code>.</li>
-                <li>Read the metric strip and inspect the fresh queue state.</li>
-                <li>Use <code>Suggested Action</code> or edit the action JSON directly.</li>
-                <li>Advance the workflow with <code>Step</code> until <code>Done</code> is true.</li>
-                <li>Inspect the response trace, system snapshots, and world summary.</li>
-              </ol>
+              <span class="section-kicker">Menu</span>
+              <h2>Navigation</h2>
+              <div class="menu-list">
+                <button class="menu-item active" type="button" data-target="top"><span><span class="menu-icon">DB</span> Dashboard</span><span>›</span></button>
+                <button class="menu-item" type="button" data-target="tickets"><span><span class="menu-icon">TK</span> Tickets</span><span>12</span></button>
+                <button class="menu-item" type="button" data-target="analytics"><span><span class="menu-icon">AN</span> Analytics</span><span>›</span></button>
+                <button class="menu-item" type="button" data-target="incidents"><span><span class="menu-icon">IC</span> Incidents</span><span>›</span></button>
+                <button class="menu-item" type="button" data-target="messages"><span><span class="menu-icon">MS</span> Messages</span><span>›</span></button>
+                <button class="menu-item" type="button" data-target="settings"><span><span class="menu-icon">ST</span> Settings</span><span>›</span></button>
+              </div>
             </div>
 
-            <div class="panel overview-card">
-              <span class="section-kicker">Environment Profile</span>
-              <h2>What This Console Covers</h2>
-              <div class="chip-row">
-                <span class="chip">10 task families</span>
-                <span class="chip">Multi-app workflow</span>
-                <span class="chip">Deterministic graders</span>
-                <span class="chip">Queue-level penalties</span>
-                <span class="chip">HTTP simulation</span>
-              </div>
-              <div class="divider" style="margin: 16px 0;"></div>
-              <div class="helper">Task presets</div>
-              <div class="chip-row">
-                <span class="chip">billing_refund_easy</span>
-                <span class="chip">export_outage_medium</span>
-                <span class="chip">security_and_refund_hard</span>
-                <span class="chip">enterprise_refund_investigation</span>
-                <span class="chip">incident_coordination_outage</span>
-                <span class="chip">executive_security_escalation</span>
-                <span class="chip">escalation_rejection_recovery</span>
-                <span class="chip">refund_reopen_review</span>
-                <span class="chip">mixed_queue_command_center</span>
-                <span class="chip">followup_reprioritization_queue</span>
+            <div class="panel overview-card support-card" id="settings">
+              <span class="section-kicker">Subscription</span>
+              <div class="support-box">
+                <h3>Support Pro Workspace</h3>
+                <p>Run all dashboards, OpenEnv tools, and incident surfaces from one premium enterprise console.</p>
+                <a class="link-btn" href="#runner">Open runner</a>
               </div>
             </div>
 
             <div class="panel overview-card">
-              <span class="section-kicker">Developer Access</span>
+              <span class="section-kicker">Quick Access</span>
               <h2>Links And Endpoints</h2>
               <div class="link-grid">
                 <a class="link-btn" href="/metadata" target="_blank" rel="noreferrer">Metadata</a>
                 <a class="link-btn" href="/schema" target="_blank" rel="noreferrer">Schema</a>
-                <a class="link-btn" href="/docs" target="_blank" rel="noreferrer">Docs</a>
+                <a class="link-btn" href="/project-docs" target="_blank" rel="noreferrer">Docs</a>
                 <a class="link-btn" href="/openapi.json" target="_blank" rel="noreferrer">OpenAPI JSON</a>
               </div>
               <div class="divider" style="margin: 16px 0;"></div>
@@ -1349,6 +2188,7 @@ GET  /schema</div>
           </aside>
         </div>
       </section>
+      </div>
     </main>
     <script>
       const responseJson = document.getElementById("response-json");
@@ -1362,6 +2202,7 @@ GET  /schema</div>
       const scoreText = document.getElementById("score-text");
       const stepsText = document.getElementById("steps-text");
       const appsText = document.getElementById("apps-text");
+      const teamText = document.getElementById("team-text");
       const queueHealthText = document.getElementById("queue-health-text");
       const taskText = document.getElementById("task-text");
       const doneText = document.getElementById("done-text");
@@ -1386,6 +2227,9 @@ GET  /schema</div>
       const agentMessage = document.getElementById("agent-message");
       const activitySummary = document.getElementById("activity-summary");
       const activityList = document.getElementById("activity-list");
+      const themeToggle = document.getElementById("theme-toggle");
+      const railToggle = document.getElementById("rail-toggle");
+      const menuButtons = Array.from(document.querySelectorAll(".menu-item[data-target]"));
       const followFocusToggle = document.getElementById("follow-focus");
       const conversationTicketSelect = document.getElementById("conversation-ticket-select");
       const resetRequiredBanner = document.getElementById("reset-required-banner");
@@ -2009,11 +2853,13 @@ GET  /schema</div>
 
       function updateSummary(payload, statePayload) {
         const observationPayload = extractObservationPayload(payload);
-        const reward = payload && payload.reward != null
-          ? Number(payload.reward)
-          : observationPayload && observationPayload.reward != null
-            ? Number(observationPayload.reward)
-            : 0;
+        const reward = statePayload && statePayload.cumulative_reward != null
+          ? Number(statePayload.cumulative_reward)
+          : payload && payload.reward != null
+            ? Number(payload.reward)
+            : observationPayload && observationPayload.reward != null
+              ? Number(observationPayload.reward)
+              : 0;
         rewardText.textContent = Number.isFinite(reward) ? reward.toFixed(2) : "0.00";
         doneText.textContent = payload ? String(Boolean(payload.done)) : doneText.textContent;
         if (payload && Object.prototype.hasOwnProperty.call(payload, "done")) {
@@ -2028,6 +2874,15 @@ GET  /schema</div>
         scoreText.textContent = parsedScore != null && Number.isFinite(parsedScore) ? parsedScore.toFixed(2) : "0.01";
         stepsText.textContent = statePayload && statePayload.step_count != null ? String(statePayload.step_count) : "0";
         taskText.textContent = taskInput.value;
+        const focusedTicketId = statePayload && statePayload.focused_ticket_id ? statePayload.focused_ticket_id : null;
+        const tickets = statePayload && Array.isArray(statePayload.tickets) ? statePayload.tickets : [];
+        const focusedTicket = focusedTicketId
+          ? tickets.find((ticket) => ticket.ticket_id === focusedTicketId)
+          : tickets.length
+            ? tickets[0]
+            : null;
+        const assignedTeam = focusedTicket && focusedTicket.assigned_team ? focusedTicket.assigned_team : null;
+        teamText.textContent = assignedTeam ? String(assignedTeam).replaceAll("_", " ") : "Unassigned";
         renderConversationPanel(observationPayload, statePayload);
         renderWorldPanels(observationPayload, statePayload);
       }
@@ -2781,6 +3636,42 @@ GET  /schema</div>
         });
       }
 
+      const storedTheme = window.localStorage.getItem("triage-theme");
+      const initialTheme = storedTheme === "light" ? "light" : "dark";
+      document.body.setAttribute("data-theme", initialTheme);
+      const storedSidebarState = window.localStorage.getItem("triage-sidebar-expanded");
+      const initialSidebarExpanded = storedSidebarState === "true";
+      document.body.classList.toggle("sidebar-expanded", initialSidebarExpanded);
+      if (themeToggle) {
+        themeToggle.textContent = initialTheme === "light" ? "Dark Mode" : "Light Mode";
+        themeToggle.addEventListener("click", () => {
+          const nextTheme = document.body.getAttribute("data-theme") === "light" ? "dark" : "light";
+          document.body.setAttribute("data-theme", nextTheme);
+          window.localStorage.setItem("triage-theme", nextTheme);
+          themeToggle.textContent = nextTheme === "light" ? "Dark Mode" : "Light Mode";
+        });
+      }
+      if (railToggle) {
+        railToggle.setAttribute("aria-expanded", String(initialSidebarExpanded));
+        railToggle.addEventListener("click", () => {
+          const isExpanded = document.body.classList.toggle("sidebar-expanded");
+          railToggle.setAttribute("aria-expanded", String(isExpanded));
+          window.localStorage.setItem("triage-sidebar-expanded", String(isExpanded));
+        });
+      }
+
+      menuButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+          const targetId = button.getAttribute("data-target");
+          const target = targetId ? document.getElementById(targetId) : null;
+          if (target) {
+            target.scrollIntoView({ behavior: "smooth", block: "start" });
+          }
+          menuButtons.forEach((item) => item.classList.remove("active"));
+          button.classList.add("active");
+        });
+      });
+
       fillSample();
         loadMetadata().catch((error) => {
           serviceMeta.textContent = "Metadata unavailable";
@@ -2793,6 +3684,1213 @@ GET  /schema</div>
         });
       refreshState().catch(() => {});
     </script>
+  </body>
+</html>
+"""
+
+
+@app.get("/project-docs", response_class=HTMLResponse, include_in_schema=False)
+async def project_docs() -> HTMLResponse:
+    return HTMLResponse(
+        '<!DOCTYPE html><html><head><title>Docs Build Required</title></head><body style="font-family:Segoe UI,sans-serif;padding:40px;"><h1>Project docs are not built yet.</h1><p>Build the local <code>documentation-customer_support</code> site to serve exact docs here.</p></body></html>'
+    )
+
+
+def _render_docs_home() -> str:
+    return """
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Support Triage Env Docs</title>
+    <link rel="icon" href="data:," />
+    <style>
+      :root {
+        color-scheme: light;
+        --ifm-color-primary: #0d5c91;
+        --ifm-color-primary-dark: #0b537f;
+        --ifm-color-primary-darker: #0a4e78;
+        --ifm-color-primary-darkest: #083f61;
+        --ifm-color-primary-light: #0f65a3;
+        --ifm-color-primary-lighter: #126cab;
+        --ifm-color-primary-lightest: #1a7fc8;
+        --ifm-background-color: #fffdf9;
+        --ifm-navbar-background-color: rgba(255, 252, 247, 0.92);
+        --ifm-footer-background-color: #f5efe5;
+        --ink: #173049;
+        --muted: #5d7188;
+        --line: rgba(11, 59, 93, 0.1);
+        --shadow: 0 24px 60px rgba(20, 44, 68, 0.1);
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: "Segoe UI", "Aptos", sans-serif;
+        color: var(--ink);
+        background: var(--ifm-background-color);
+      }
+      .navbar {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        backdrop-filter: blur(12px);
+        background: var(--ifm-navbar-background-color);
+        border-bottom: 1px solid rgba(11, 59, 93, 0.08);
+      }
+      .navbar-inner {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 14px 24px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+      }
+      .navbar-brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 12px;
+        color: var(--ink);
+        text-decoration: none;
+        font-weight: 700;
+      }
+      .brand-mark {
+        width: 34px;
+        height: 34px;
+        border-radius: 12px;
+        background: linear-gradient(180deg, #0f65a3, #1a7fc8);
+        box-shadow: 0 10px 24px rgba(13, 92, 145, 0.18);
+      }
+      .navbar-nav {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+      .navbar-nav a,
+      .button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 42px;
+        padding: 0 16px;
+        border-radius: 999px;
+        border: 1px solid var(--line);
+        text-decoration: none;
+        color: var(--ink);
+        background: rgba(255, 255, 255, 0.76);
+        font-weight: 600;
+      }
+      .button--primary {
+        border-color: transparent;
+        background: linear-gradient(180deg, #0f65a3, #0d5c91);
+        color: #fff;
+        box-shadow: 0 14px 30px rgba(13, 92, 145, 0.22);
+      }
+      .button--secondary {
+        color: var(--ifm-color-primary);
+      }
+      main {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 30px 24px 56px;
+      }
+      .heroBanner {
+        padding: 30px 0 10px;
+      }
+      .heroShell {
+        display: grid;
+        grid-template-columns: 1.05fr 0.95fr;
+        gap: 18px;
+        align-items: stretch;
+      }
+      .heroCopy,
+      .heroPanel,
+      .ribbon,
+      .featureCard,
+      .calloutBox {
+        border: 1px solid var(--line);
+        border-radius: 24px;
+        background: rgba(255, 255, 255, 0.8);
+        box-shadow: var(--shadow);
+      }
+      .heroCopy {
+        padding: 30px;
+      }
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        border-radius: 999px;
+        border: 1px solid rgba(13, 92, 145, 0.14);
+        background: rgba(13, 92, 145, 0.06);
+        color: var(--ifm-color-primary);
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+      h1, h2, h3 {
+        font-family: "Georgia", "Iowan Old Style", serif;
+        letter-spacing: -0.02em;
+      }
+      .heroTitle {
+        margin: 16px 0 10px;
+        font-size: 54px;
+        line-height: 0.98;
+      }
+      .heroSubtitle,
+      .metricCard p,
+      .metricTile span:last-child,
+      .ribbon p,
+      .featureCard p,
+      .calloutBox p {
+        color: var(--muted);
+        line-height: 1.8;
+      }
+      .buttonRow {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 22px;
+      }
+      .heroPanel {
+        padding: 22px;
+        display: grid;
+        gap: 14px;
+      }
+      .metricCard {
+        padding: 18px;
+        border-radius: 20px;
+        background: linear-gradient(180deg, rgba(13, 92, 145, 0.08), rgba(26, 127, 200, 0.05));
+      }
+      .metricCard span,
+      .metricTile span:first-child,
+      .sectionIntro p,
+      .calloutLabel {
+        display: block;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--ifm-color-primary);
+      }
+      .metricCard strong {
+        display: block;
+        margin-top: 10px;
+        font-size: 24px;
+        line-height: 1.25;
+      }
+      .metricGrid,
+      .featureGrid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+      }
+      .metricTile,
+      .featureCard {
+        padding: 18px;
+        border-radius: 20px;
+      }
+      .metricTile {
+        background: rgba(255, 255, 255, 0.72);
+        border: 1px solid rgba(11, 59, 93, 0.08);
+      }
+      .metricTile strong {
+        display: block;
+        margin-top: 8px;
+        font-size: 17px;
+      }
+      .ribbonRow {
+        margin-top: 18px;
+      }
+      .ribbon {
+        padding: 18px 22px;
+      }
+      .ribbon span {
+        display: block;
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--ifm-color-primary);
+      }
+      .sectionIntro {
+        margin: 28px 0 16px;
+      }
+      .sectionIntro h2 {
+        margin: 10px 0 0;
+        font-size: 38px;
+      }
+      .featureCard h3 {
+        margin: 10px 0 8px;
+        font-size: 26px;
+      }
+      .calloutSection {
+        margin-top: 28px;
+      }
+      .calloutBox {
+        padding: 24px;
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 16px;
+        align-items: center;
+      }
+      .calloutTitle {
+        margin: 0;
+        font-size: 34px;
+      }
+      .calloutActions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+      }
+      .footer {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 24px 40px;
+        color: var(--muted);
+      }
+      @media (max-width: 980px) {
+        .heroShell,
+        .metricGrid,
+        .featureGrid,
+        .calloutBox {
+          grid-template-columns: 1fr;
+        }
+        .heroTitle {
+          font-size: 42px;
+        }
+        .sectionIntro h2,
+        .calloutTitle {
+          font-size: 30px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="navbar">
+      <div class="navbar-inner">
+        <a class="navbar-brand" href="/project-docs">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span>Support Triage Env</span>
+        </a>
+        <nav class="navbar-nav">
+          <a href="/project-docs/intro">Overview</a>
+          <a href="/project-docs/hackathon-fit">Theme Fit</a>
+          <a href="/project-docs/problem-statement">Problem Statement</a>
+          <a href="/project-docs/pivot-strategy">Pivot Strategy</a>
+          <a href="/">Dashboard</a>
+        </nav>
+      </div>
+    </header>
+    <main>
+      <header class="heroBanner">
+        <div class="heroShell">
+          <div class="heroCopy">
+            <div class="eyebrow">OpenEnv project docs</div>
+            <h1 class="heroTitle">Support Triage Env Docs</h1>
+            <p class="heroSubtitle">Detailed project documentation, evaluation logic, and hackathon positioning</p>
+            <div class="buttonRow">
+              <a class="button button--primary" href="/project-docs/intro">Start with the project overview</a>
+              <a class="button button--secondary" href="/project-docs/hackathon-fit">See the best Round 2 theme fit</a>
+            </div>
+          </div>
+          <div class="heroPanel">
+            <div class="metricCard">
+              <span>Primary fit</span>
+              <strong>Theme 3.1: World Modeling</strong>
+              <p>Professional workflow simulation with dynamic state, policy constraints, and real task sequencing.</p>
+            </div>
+            <div class="metricGrid">
+              <div class="metricTile">
+                <span>Current tasks</span>
+                <strong>3+</strong>
+                <span>Seeded families with deterministic grading and queue-state updates.</span>
+              </div>
+              <div class="metricTile">
+                <span>Core loop</span>
+                <strong>Reset - Step - State</strong>
+                <span>OpenEnv-friendly execution flow for baselines and evaluators.</span>
+              </div>
+              <div class="metricTile">
+                <span>Strong secondary fit</span>
+                <strong>Long-horizon planning</strong>
+                <span>Natural extension path through longer queues and delayed outcomes.</span>
+              </div>
+              <div class="metricTile">
+                <span>Best pivot</span>
+                <strong>Support ops control tower</strong>
+                <span>Most compelling hackathon story built from the current repo foundation.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="ribbonRow">
+          <div class="ribbon">
+            <span>What this site gives you</span>
+            <p>A detailed walkthrough of the current Support_triage_env repo, a grounded analysis of how it matches the hackathon themes, and a practical plan to pivot it into a stronger finalist-style submission.</p>
+          </div>
+        </div>
+      </header>
+
+      <section>
+        <div class="sectionIntro">
+          <p>What the documentation covers</p>
+          <h2>Built to help you explain the project and improve it</h2>
+        </div>
+        <div class="featureGrid">
+          <article class="featureCard">
+            <p class="calloutLabel">Project</p>
+            <h3>Grounded enterprise workflow simulation</h3>
+            <p>Support_triage_env already simulates realistic support queues, typed actions, policy constraints, and deterministic grading. That makes it a strong foundation instead of just a pitch concept.</p>
+          </article>
+          <article class="featureCard">
+            <p class="calloutLabel">Theme fit</p>
+            <h3>Best aligned with World Modeling plus Long Horizon</h3>
+            <p>The current repo maps most naturally to Theme 3.1 because agents must maintain state, act safely in a professional workflow, and sequence actions against a partially observable queue.</p>
+          </article>
+          <article class="featureCard">
+            <p class="calloutLabel">Submission strategy</p>
+            <h3>Stronger if framed as a support operations control tower</h3>
+            <p>The recommended pivot is to evolve the environment from single-ticket triage into a multi-team support command center with SLA clocks, policy drift, delayed outcomes, and internal specialist handoffs.</p>
+          </article>
+          <article class="featureCard">
+            <p class="calloutLabel">Evaluation</p>
+            <h3>Reward logic is already one of the project strengths</h3>
+            <p>The repo includes deterministic graders, shaped rewards, penalties for unsafe behavior, and reproducible tasks. That is exactly the kind of measurable environment foundation judges usually want to see.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="calloutSection">
+        <div class="calloutBox">
+          <div>
+            <p class="calloutLabel">Recommended positioning</p>
+            <h2 class="calloutTitle">Pitch this as a professional support-operations world model, then extend it with longer horizons and multi-actor coordination.</h2>
+          </div>
+          <div class="calloutActions">
+            <a class="button button--primary" href="/project-docs/problem-statement">Read the proposed problem statement</a>
+            <a class="button button--secondary" href="/project-docs/pivot-strategy">Open the pivot roadmap</a>
+          </div>
+        </div>
+      </section>
+    </main>
+    <div class="footer">Extracted from the referenced documentation source and rebuilt inside TriageOS.</div>
+  </body>
+</html>
+"""
+
+
+DOCS_ORDER = [
+    "intro",
+    "project-overview",
+    "architecture",
+    "environment-loop",
+    "reward-and-evaluation",
+    "training-and-submission",
+    "hackathon-fit",
+    "problem-statement",
+    "pivot-strategy",
+    "judging-and-demo",
+]
+
+DOCS_META = {
+    "intro": {
+        "title": "Overview",
+        "section": "Overview",
+        "description": "What Support_triage_env is, why it matters, and how this documentation is organized.",
+        "content": """
+<p>Support_triage_env is an OpenEnv-compatible customer support triage simulator. It evaluates and trains agents on realistic business workflows: reading a queue of support tickets, classifying the issue correctly, prioritizing urgent work, drafting policy-safe customer replies, routing tickets to the right internal team, and deciding whether to escalate or resolve.</p>
+<h2>What already exists in the repo</h2>
+<ul>
+  <li>a typed action, observation, reward, and state model</li>
+  <li>a simulator with <code>reset</code>, <code>step</code>, and <code>state</code></li>
+  <li>seeded task families with deterministic graders</li>
+  <li>an OpenEnv and FastAPI server</li>
+  <li>a competition-style <code>inference.py</code> entrypoint</li>
+  <li>synthetic dataset generation and a lightweight classifier baseline</li>
+</ul>
+<h2>Fast conclusion</h2>
+<ol>
+  <li><strong>Theme 3.1: World Modeling across professional tasks</strong></li>
+  <li><strong>Theme 2: Long-Horizon Planning and Instruction Following</strong></li>
+  <li><strong>Optional expansion into Theme 1: Multi-Agent Interactions</strong></li>
+</ol>
+<p>The best framing is: a policy-aware support operations environment where an agent manages a partially observable enterprise queue, coordinates routing and customer communication, and optimizes safe outcomes under delayed business impact.</p>
+""",
+    },
+    "project-overview": {
+        "title": "Project Overview",
+        "section": "Project",
+        "description": "A practical overview of the Support_triage_env repository and what it currently implements.",
+        "content": """
+<p>This project simulates a customer support operations workflow rather than a toy classification benchmark. The agent must operate inside an environment with a queue of tickets, typed actions, mutable ticket state, explicit policy hints, task-specific grading logic, and penalties for unsafe or low-quality decisions.</p>
+<h2>What the agent can do</h2>
+<ul>
+  <li><code>view_ticket</code></li>
+  <li><code>classify_ticket</code></li>
+  <li><code>draft_reply</code></li>
+  <li><code>request_info</code></li>
+  <li><code>escalate_ticket</code></li>
+  <li><code>resolve_ticket</code></li>
+  <li><code>finish</code></li>
+</ul>
+<h2>Task families in the repo</h2>
+<ul>
+  <li><strong>billing_refund_easy</strong>: refund classification, safe reply, billing routing, clean resolution</li>
+  <li><strong>export_outage_medium</strong>: outage handling, escalation judgment, and avoiding premature resolution</li>
+  <li><strong>security_and_refund_hard</strong>: prioritization, urgent security handling, safe escalation, and secondary refund completion</li>
+</ul>
+<h2>Current strengths</h2>
+<ul>
+  <li>realistic business setting</li>
+  <li>deterministic grading</li>
+  <li>clear reward shaping</li>
+  <li>OpenEnv server support</li>
+  <li>inference entrypoint compatible with evaluator-style execution</li>
+</ul>
+""",
+    },
+    "architecture": {
+        "title": "Architecture",
+        "section": "Project",
+        "description": "How the simulator, tasks, graders, server, and inference components fit together.",
+        "content": """
+<p>The implementation being documented lives inside <code>Support_triage_env/</code>. The important modules are models.py, tasks.py, graders.py, simulator.py, client.py, synthetic_dataset.py, training_data.py, train_classifier.py, server/app.py, and inference.py.</p>
+<h2>System flow</h2>
+<pre>task definition + seed
+        ->
+scenario generation
+        ->
+simulator reset
+        ->
+observation returned to agent
+        ->
+agent chooses typed action
+        ->
+simulator mutates ticket state
+        ->
+grader evaluates full state
+        ->
+reward + progress snapshot returned</pre>
+<h2>Main architectural layers</h2>
+<ul>
+  <li><strong>Scenario generation</strong>: reproducible variations of each task family</li>
+  <li><strong>Stateful environment execution</strong>: resets episodes, validates actions, updates ticket records, computes reward</li>
+  <li><strong>Deterministic grading</strong>: checks category, priority, team assignment, reply quality, escalation quality, terminal action</li>
+  <li><strong>Environment serving</strong>: <code>POST /reset</code>, <code>POST /step</code>, <code>GET /state</code>, <code>GET /metadata</code>, <code>GET /schema</code></li>
+</ul>
+""",
+    },
+    "environment-loop": {
+        "title": "Environment Loop",
+        "section": "Project",
+        "description": "How reset, step, state, task structure, and partial observability work in the simulator.",
+        "content": """
+<p>The project follows a familiar environment pattern using reset, step, and state. This makes the environment usable for scripted baselines, model-driven rollouts, future RL or post-training pipelines, and server-based evaluation through OpenEnv.</p>
+<h2>Observation design</h2>
+<ul>
+  <li><code>task</code></li>
+  <li><code>instructions</code></li>
+  <li><code>policy_hints</code></li>
+  <li><code>queue</code></li>
+  <li><code>focused_ticket</code></li>
+  <li><code>last_action_result</code></li>
+  <li><code>progress</code></li>
+  <li><code>reward</code></li>
+  <li><code>done</code></li>
+</ul>
+<h2>Current task progression</h2>
+<ul>
+  <li><strong>Billing refund</strong>: classify correctly, draft a safe apology and refund timeline, resolve with <code>refund_submitted</code></li>
+  <li><strong>Export outage</strong>: classify as product bug, set high priority, route to engineering, reply with urgency-aware guidance, escalate instead of resolving</li>
+  <li><strong>Security plus refund</strong>: prioritize security first, classify urgent takeover, escalate to <code>trust_safety</code>, then complete the billing refund task</li>
+</ul>
+""",
+    },
+    "reward-and-evaluation": {
+        "title": "Reward and Evaluation",
+        "section": "Project",
+        "description": "How deterministic grading, shaped reward, and penalties are implemented.",
+        "content": """
+<p>The evaluation logic is implemented in code and tied directly to task expectations. The grader returns a grading snapshot with score, component contributions, penalties, satisfied requirements, outstanding requirements, and violations.</p>
+<h2>Reward structure</h2>
+<ul>
+  <li>score delta from the previous step</li>
+  <li>per-step cost</li>
+  <li>repeated-action penalty</li>
+  <li>invalid-action penalty</li>
+</ul>
+<h2>Why this evaluation is convincing</h2>
+<ul>
+  <li>deterministic</li>
+  <li>interpretable</li>
+  <li>decomposed into components</li>
+  <li>aligned with business behavior</li>
+  <li>safety aware</li>
+</ul>
+<p>The best next reward extensions are delayed business outcomes, queue-level metrics, tool-use quality, and policy drift handling.</p>
+""",
+    },
+    "training-and-submission": {
+        "title": "Training and Submission",
+        "section": "Project",
+        "description": "How the repo supports dataset generation, baselines, inference, and hackathon submission readiness.",
+        "content": """
+<p>The repository already includes synthetic scenario generation, combined training data generation, a lightweight classifier baseline, a local model-driven baseline runner, a competition-facing <code>inference.py</code>, and a submission validation shell script.</p>
+<h2>Synthetic dataset pipeline</h2>
+<ul>
+  <li>ticket details</li>
+  <li>task metadata</li>
+  <li>policy hints</li>
+  <li>expected routing</li>
+  <li>expected terminal actions</li>
+  <li>reply requirements</li>
+  <li>forbidden phrases</li>
+</ul>
+<h2>What is still missing for Round 2</h2>
+<p>The biggest missing artifact is a minimal post-training notebook or script using Unsloth or Hugging Face TRL.</p>
+<h2>Best post-training story</h2>
+<ol>
+  <li>supervised warm start</li>
+  <li>environment rollouts</li>
+  <li>preference or RL-style refinement</li>
+  <li>before/after comparison</li>
+</ol>
+""",
+    },
+    "hackathon-fit": {
+        "title": "Hackathon Theme Fit",
+        "section": "Hackathon Strategy",
+        "description": "Detailed analysis of where Support_triage_env best fits among the Round 2 themes.",
+        "content": """
+<p>After reviewing the current project and the Round 2 themes, the strongest fit is Theme 3.1: World Modeling across professional tasks, followed by Theme 2: Long-Horizon Planning and Instruction Following, with Theme 1 as an optional expansion path.</p>
+<h2>Why Theme 3.1 is the best fit</h2>
+<ul>
+  <li>the agent interacts with an environment instead of answering a single prompt</li>
+  <li>tickets evolve over time</li>
+  <li>actions change the world state</li>
+  <li>the workflow is clearly professional and enterprise-oriented</li>
+  <li>evaluation is grounded in business logic and safety policy</li>
+</ul>
+<h2>Fit matrix</h2>
+<ul>
+  <li>Theme 1: Medium</li>
+  <li>Theme 2: Medium to strong</li>
+  <li>Theme 3.1: Strongest</li>
+  <li>Theme 3.2: Weak</li>
+  <li>Theme 4: Weak to medium</li>
+</ul>
+""",
+    },
+    "problem-statement": {
+        "title": "Submission-Ready Problem Statement",
+        "section": "Hackathon Strategy",
+        "description": "A refined hackathon problem statement built from the current Support_triage_env project.",
+        "content": """
+<p><strong>Recommended title:</strong> Support Operations Control Tower.</p>
+<p>Build an OpenEnv environment in which an agent operates as a frontline support triage coordinator for an enterprise software company. The agent must inspect a partially observable support queue, classify and prioritize tickets, write safe and useful customer responses, route issues to the correct internal teams, and decide when cases should be escalated versus resolved.</p>
+<h2>Capabilities of the agent</h2>
+<ul>
+  <li>read and interpret support ticket content</li>
+  <li>infer issue category and urgency</li>
+  <li>prioritize work across a queue</li>
+  <li>produce policy-safe customer communication</li>
+  <li>route issues to the correct internal team</li>
+  <li>escalate incidents when frontline resolution is unsafe or insufficient</li>
+  <li>preserve context across multiple steps</li>
+  <li>recover from mistakes without repeated action loops</li>
+</ul>
+<p>The refined problem statement sounds like a serious enterprise workflow, supports longer horizons and richer reward shaping, and opens the door to multi-agent extensions.</p>
+""",
+    },
+    "pivot-strategy": {
+        "title": "Pivot Strategy",
+        "section": "Hackathon Strategy",
+        "description": "How to evolve the current problem statement into a more unique and competitive Round 2 submission.",
+        "content": """
+<p>Do not abandon the current project. Instead, pivot it upward into <strong>Support Operations Control Tower</strong>.</p>
+<h2>Recommended pivot path</h2>
+<ol>
+  <li><strong>Strengthen the current single-agent world</strong>: larger mixed queues, SLA timers, enterprise account weighting, reopen events, richer task families</li>
+  <li><strong>Add multi-actor behavior</strong>: engineering triage, billing specialist, trust and safety reviewer, customer simulator, support manager</li>
+  <li><strong>Add drift and delayed consequences</strong>: routing schema changes, policy updates, evolving templates, downstream outcomes arriving several steps later</li>
+</ol>
+<h2>Concrete features that improve your chances</h2>
+<ul>
+  <li>queue-level objectives</li>
+  <li>tool-like internal systems</li>
+  <li>policy and schema drift</li>
+  <li>oversight layer</li>
+  <li>before versus after training evidence</li>
+</ul>
+""",
+    },
+    "judging-and-demo": {
+        "title": "Judging and Demo",
+        "section": "Hackathon Strategy",
+        "description": "How to map the project to the judging criteria and present it effectively.",
+        "content": """
+<p>The submission should show OpenEnv usage, a minimal training script or notebook using Unsloth or HF TRL, and a short public-facing explanation asset such as a mini-blog or short video.</p>
+<h2>Recommended 3-minute pitch flow</h2>
+<ol>
+  <li>Explain the real-world problem: enterprise support queues are high stakes and safe routing matters</li>
+  <li>Show the environment: reset a task, inspect the queue, step through actions, and show score/progress changing live</li>
+  <li>Show evidence of learning and the future path: before/after metrics, meaningful reward model, and extensions to longer-horizon multi-agent workflows</li>
+</ol>
+<h2>Best demo narrative</h2>
+<p>The most memorable demo is not “our agent got the right label,” but “our agent handled a realistic support queue, prioritized a security incident over a routine billing issue, used safe communication, routed work correctly, and improved measurable reward after training.”</p>
+""",
+    },
+}
+
+
+def _render_docs_page(slug: str) -> str:
+    doc = DOCS_META[slug]
+    current_index = DOCS_ORDER.index(slug)
+    prev_slug = DOCS_ORDER[current_index - 1] if current_index > 0 else None
+    next_slug = DOCS_ORDER[current_index + 1] if current_index < len(DOCS_ORDER) - 1 else None
+    prev_link = (
+        f'<a class="pager-link" href="/project-docs/{prev_slug}"><span>Previous</span><strong>{DOCS_META[prev_slug]["title"]}</strong></a>'
+        if prev_slug
+        else ""
+    )
+    next_link = (
+        f'<a class="pager-link" href="/project-docs/{next_slug}"><span>Next</span><strong>{DOCS_META[next_slug]["title"]}</strong></a>'
+        if next_slug
+        else ""
+    )
+    sections = ["Project", "Hackathon Strategy"]
+    sidebar_html = []
+    for section in sections:
+        items = []
+        for item_slug in DOCS_ORDER:
+            item = DOCS_META[item_slug]
+            if item["section"] != section and not (section == "Project" and item_slug == "intro"):
+                continue
+            active = " active" if item_slug == slug else ""
+            items.append(
+                f'<a class="sidebar-link{active}" href="/project-docs/{item_slug}">{item["title"]}</a>'
+            )
+        if items:
+            section_label = "Overview" if section == "Project" else section
+            sidebar_html.append(
+                f'<div class="sidebar-group"><strong>{section_label}</strong>{"".join(items)}</div>'
+            )
+    return f"""
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{doc["title"]} | TriageOS Docs</title>
+    <link rel="icon" href="data:," />
+    <style>
+      :root {{
+        color-scheme: light;
+        --bg: #fffdf9;
+        --panel: rgba(255, 255, 255, 0.9);
+        --line: rgba(11, 59, 93, 0.1);
+        --ink: #173049;
+        --muted: #5d7188;
+        --accent: #0d5c91;
+        --heading: Georgia, "Iowan Old Style", serif;
+        --body: "Segoe UI", Aptos, sans-serif;
+        --shadow: 0 22px 60px rgba(20, 44, 68, 0.08);
+      }}
+      * {{ box-sizing: border-box; }}
+      body {{
+        margin: 0;
+        font-family: var(--body);
+        color: var(--ink);
+        background:
+          radial-gradient(circle at top left, rgba(13, 92, 145, 0.08), transparent 24%),
+          radial-gradient(circle at bottom right, rgba(26, 127, 200, 0.08), transparent 22%),
+          linear-gradient(180deg, #fffdf9 0%, #f7f2e9 100%);
+      }}
+      .topbar {{
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        backdrop-filter: blur(12px);
+        background: rgba(255, 252, 247, 0.92);
+        border-bottom: 1px solid var(--line);
+      }}
+      .topbar-inner {{
+        max-width: 1280px;
+        margin: 0 auto;
+        padding: 14px 24px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+      }}
+      .brand {{
+        display: inline-flex;
+        align-items: center;
+        gap: 12px;
+        color: var(--ink);
+        font-weight: 700;
+        text-decoration: none;
+      }}
+      .brand-mark {{
+        width: 32px;
+        height: 32px;
+        border-radius: 12px;
+        background: linear-gradient(180deg, #0f65a3, #1a7fc8);
+        box-shadow: 0 10px 24px rgba(13, 92, 145, 0.18);
+      }}
+      .top-actions {{
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }}
+      .top-actions a {{
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 40px;
+        padding: 0 14px;
+        border-radius: 999px;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.72);
+        color: var(--ink);
+        text-decoration: none;
+        font-size: 14px;
+        font-weight: 600;
+      }}
+      .layout {{
+        max-width: 1280px;
+        margin: 0 auto;
+        padding: 28px 24px 48px;
+        display: grid;
+        grid-template-columns: 280px minmax(0, 1fr);
+        gap: 20px;
+      }}
+      .sidebar,
+      .content {{
+        border: 1px solid var(--line);
+        border-radius: 28px;
+        background: var(--panel);
+        box-shadow: var(--shadow);
+      }}
+      .sidebar {{
+        position: sticky;
+        top: 78px;
+        align-self: start;
+        padding: 20px;
+      }}
+      .sidebar h2,
+      .content h1,
+      .content h2,
+      .content h3 {{
+        font-family: var(--heading);
+        letter-spacing: -0.03em;
+      }}
+      .sidebar h2 {{
+        margin: 0 0 16px;
+        font-size: 28px;
+      }}
+      .sidebar-group + .sidebar-group {{
+        margin-top: 18px;
+      }}
+      .sidebar-group strong {{
+        display: block;
+        margin-bottom: 8px;
+        color: var(--accent);
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }}
+      .sidebar-link {{
+        display: block;
+        padding: 10px 12px;
+        border-radius: 14px;
+        color: var(--muted);
+        text-decoration: none;
+        font-weight: 600;
+      }}
+      .sidebar-link.active {{
+        background: rgba(13, 92, 145, 0.08);
+        color: var(--accent);
+      }}
+      .content {{
+        padding: 30px;
+      }}
+      .eyebrow {{
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        border-radius: 999px;
+        border: 1px solid rgba(13, 92, 145, 0.14);
+        background: rgba(13, 92, 145, 0.06);
+        color: var(--accent);
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }}
+      .content h1 {{
+        margin: 18px 0 8px;
+        font-size: 48px;
+        line-height: 1;
+      }}
+      .lead {{
+        margin: 0 0 22px;
+        color: var(--muted);
+        font-size: 17px;
+        line-height: 1.8;
+      }}
+      .markdown p,
+      .markdown li {{
+        color: var(--muted);
+        line-height: 1.85;
+        font-size: 16px;
+      }}
+      .markdown h2 {{
+        margin: 28px 0 10px;
+        font-size: 30px;
+      }}
+      .markdown ul,
+      .markdown ol {{
+        padding-left: 22px;
+      }}
+      .markdown pre {{
+        padding: 16px;
+        border-radius: 18px;
+        border: 1px solid var(--line);
+        background: #f3f6fb;
+        color: #26405b;
+        overflow: auto;
+      }}
+      .pager {{
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+        margin-top: 28px;
+      }}
+      .pager-link {{
+        display: block;
+        padding: 18px;
+        border-radius: 20px;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.72);
+        text-decoration: none;
+      }}
+      .pager-link span {{
+        display: block;
+        color: var(--accent);
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }}
+      .pager-link strong {{
+        display: block;
+        margin-top: 8px;
+        color: var(--ink);
+        font-size: 18px;
+      }}
+      @media (max-width: 980px) {{
+        .layout {{
+          grid-template-columns: 1fr;
+        }}
+        .sidebar {{
+          position: static;
+        }}
+        .pager {{
+          grid-template-columns: 1fr;
+        }}
+      }}
+    </style>
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="topbar-inner">
+        <a class="brand" href="/project-docs">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span>TriageOS Docs</span>
+        </a>
+        <nav class="top-actions">
+          <a href="/project-docs">Docs Home</a>
+          <a href="/docs">FastAPI Docs</a>
+          <a href="/api">API Page</a>
+          <a href="/">Dashboard</a>
+        </nav>
+      </div>
+    </header>
+    <main class="layout">
+      <aside class="sidebar">
+        <h2>Documentation</h2>
+        {''.join(sidebar_html)}
+      </aside>
+      <article class="content">
+        <div class="eyebrow">{doc["section"]}</div>
+        <h1>{doc["title"]}</h1>
+        <p class="lead">{doc["description"]}</p>
+        <div class="markdown">
+          {doc["content"]}
+        </div>
+        <div class="pager">
+          {prev_link}
+          {next_link}
+        </div>
+      </article>
+    </main>
+  </body>
+</html>
+"""
+
+
+@app.get("/project-docs/{slug}", response_class=HTMLResponse, include_in_schema=False)
+async def project_docs_page(slug: str) -> HTMLResponse:
+    return HTMLResponse(
+        '<!DOCTYPE html><html><head><title>Docs Build Required</title></head><body style="font-family:Segoe UI,sans-serif;padding:40px;"><h1>Project docs are not built yet.</h1><p>Build the local <code>documentation-customer_support</code> site to serve exact docs pages here.</p></body></html>',
+        status_code=404,
+    )
+
+
+@app.get("/api", response_class=HTMLResponse, include_in_schema=False)
+async def api_landing() -> str:
+    return """
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>TriageOS API</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0a0d14;
+        --panel: rgba(16, 21, 32, 0.94);
+        --line: rgba(162, 180, 212, 0.12);
+        --ink: #f4f7fb;
+        --muted: #98a6bc;
+        --accent: #7d8cff;
+        --accent-2: #56d6ff;
+        --shadow: 0 24px 70px rgba(0, 0, 0, 0.45);
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: "Segoe UI Variable", "Segoe UI", "Inter", sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at top left, rgba(125, 140, 255, 0.18), transparent 24%),
+          radial-gradient(circle at bottom right, rgba(86, 214, 255, 0.12), transparent 22%),
+          linear-gradient(180deg, #0a0d14 0%, #101521 100%);
+      }
+      main {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 40px 24px 56px;
+      }
+      .hero {
+        padding: 32px;
+        border-radius: 28px;
+        border: 1px solid var(--line);
+        background: linear-gradient(180deg, rgba(15, 20, 31, 0.98), rgba(11, 15, 24, 0.98));
+        box-shadow: var(--shadow);
+      }
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        border-radius: 999px;
+        border: 1px solid rgba(125, 140, 255, 0.18);
+        background: rgba(125, 140, 255, 0.1);
+        color: #dbe3ff;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+      h1 {
+        margin: 18px 0 12px;
+        font-size: 52px;
+        line-height: 0.95;
+        letter-spacing: -0.05em;
+      }
+      .sub {
+        max-width: 760px;
+        margin: 0;
+        color: var(--muted);
+        font-size: 16px;
+        line-height: 1.8;
+      }
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 24px;
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 48px;
+        padding: 0 18px;
+        border-radius: 14px;
+        border: 1px solid var(--line);
+        color: var(--ink);
+        text-decoration: none;
+        font-weight: 600;
+        background: rgba(255, 255, 255, 0.04);
+      }
+      .btn.primary {
+        border-color: transparent;
+        background: linear-gradient(180deg, #6d7cff, #5262f1);
+        color: white;
+        box-shadow: 0 14px 28px rgba(82, 98, 241, 0.28);
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 16px;
+        margin-top: 22px;
+      }
+      .card {
+        border: 1px solid var(--line);
+        border-radius: 22px;
+        padding: 20px;
+        background: rgba(255, 255, 255, 0.04);
+      }
+      .card strong {
+        display: block;
+        font-size: 12px;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+      .card span {
+        display: block;
+        margin-top: 10px;
+        font-size: 22px;
+        font-weight: 700;
+      }
+      .card p {
+        margin: 10px 0 0;
+        color: var(--muted);
+        line-height: 1.7;
+      }
+      .stack {
+        display: grid;
+        grid-template-columns: 1.15fr 0.85fr;
+        gap: 16px;
+        margin-top: 18px;
+      }
+      .panel {
+        border: 1px solid var(--line);
+        border-radius: 24px;
+        padding: 22px;
+        background: rgba(255, 255, 255, 0.04);
+      }
+      .panel h2 {
+        margin: 0 0 12px;
+        font-size: 22px;
+      }
+      .panel p, .panel li, .code {
+        color: var(--muted);
+      }
+      ul {
+        margin: 0;
+        padding-left: 18px;
+      }
+      li + li {
+        margin-top: 8px;
+      }
+      .code {
+        margin-top: 14px;
+        padding: 14px;
+        border-radius: 16px;
+        border: 1px solid var(--line);
+        background: rgba(8, 10, 16, 0.84);
+        font-family: Consolas, "SFMono-Regular", monospace;
+        white-space: pre-wrap;
+      }
+      @media (max-width: 980px) {
+        .grid, .stack {
+          grid-template-columns: 1fr;
+        }
+        h1 {
+          font-size: 40px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="hero">
+        <span class="eyebrow">OpenEnv API Surface</span>
+        <h1>TriageOS Developer Portal</h1>
+        <p class="sub">
+          Explore the support triage environment through schema-aware HTTP endpoints, interactive docs,
+          and OpenAPI JSON. This surface is designed for hackathon demos, integrations, and agent testing.
+        </p>
+        <div class="actions">
+          <a class="btn primary" href="/project-docs">Open Project Docs</a>
+          <a class="btn" href="/docs">FastAPI Interactive Docs</a>
+          <a class="btn" href="/openapi.json">View OpenAPI JSON</a>
+          <a class="btn" href="/metadata">Metadata</a>
+          <a class="btn" href="/schema">Schema</a>
+          <a class="btn" href="/">Back To Dashboard</a>
+        </div>
+
+        <div class="grid">
+          <article class="card">
+            <strong>Runtime</strong>
+            <span>OpenEnv HTTP</span>
+            <p>Typed environment server exposing reset, step, state, metadata, and schema.</p>
+          </article>
+          <article class="card">
+            <strong>Use Case</strong>
+            <span>Support Triage</span>
+            <p>Billing, incident, trust, policy, and queue-state workflows in one environment.</p>
+          </article>
+          <article class="card">
+            <strong>Mode</strong>
+            <span>Agent Testing</span>
+            <p>Built for controlled multi-step evaluation with observable reward and score traces.</p>
+          </article>
+        </div>
+
+        <div class="stack">
+          <section class="panel">
+            <h2>Core Endpoints</h2>
+            <ul>
+              <li><code>POST /reset</code> starts a new seeded task episode.</li>
+              <li><code>POST /step</code> applies one environment action.</li>
+              <li><code>GET /state</code> returns current environment state.</li>
+              <li><code>GET /metadata</code> returns environment metadata.</li>
+              <li><code>GET /schema</code> returns model/schema info.</li>
+            </ul>
+            <div class="code">from support_triage_env import SupportTriageEnv
+
+env = SupportTriageEnv(base_url="http://127.0.0.1:8000")
+await env.connect()</div>
+          </section>
+
+          <section class="panel">
+            <h2>Why Use This Page</h2>
+            <p>
+              Use the interactive docs for manual request testing, OpenAPI JSON for integrations, and
+              metadata/schema endpoints for quick environment introspection during demos or debugging.
+            </p>
+            <div class="code">Recommended flow:
+1. Reset an episode
+2. Inspect state
+3. Send step actions
+4. Track reward + final score</div>
+          </section>
+        </div>
+      </section>
+    </main>
   </body>
 </html>
 """
