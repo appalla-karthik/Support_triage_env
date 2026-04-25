@@ -31,6 +31,8 @@ Submission links to fill before final handoff:
 - Demo video or slide deck: `TODO`
 - Training run plots / W&B run: `TODO`
 
+For the exact pre-training and pre-submission workflow, see [HACKATHON_SETUP.md](./HACKATHON_SETUP.md).
+
 ## What Already Exists In The Repo
 
 The current project is already a usable environment package, not just an idea draft.
@@ -84,6 +86,79 @@ This environment is designed for **Theme 3.1: World Modeling for professional ta
 - The environment is **trainable**: the repo includes synthetic data generation, trajectory generation, baseline evaluation, and an Unsloth + TRL notebook.
 - The environment is **demo-friendly**: the FastAPI server exposes a polished local console that lets judges inspect queue state, actions, and reward changes live.
 - The environment is **hard to shortcut**: several tasks include delayed events such as escalation rejection, ticket reopen, and customer follow-up so shallow one-step behavior does not score well.
+
+## Results To Report
+
+The clearest way to present improvement for judges is one compact before/after table.
+The repo is now structured to support reporting:
+
+- classification accuracy before and after training
+- environment mean score before and after training
+- environment success rate before and after training
+- mean steps per task suite
+- per-task score and success-rate summaries for all 10 task families
+
+Recommended sources for the final numbers:
+
+- `outputs/train_eval_report.json` from `train_and_evaluate.py`
+- `outputs/baseline_scores.json` from `support_triage_env.baseline.run_baseline`
+- `outputs/inference_last_run.json` from the competition entrypoint
+
+Suggested final README table:
+
+| Metric | Baseline | Trained | Delta |
+| --- | --- | --- | --- |
+| Classification accuracy | `0.4534` | `0.9962` | `+0.5428` |
+| Environment mean score | `0.7082` | `0.7879` | `+0.0797` |
+| Environment success rate | `0.45` | `0.65` | `+0.20` |
+| Mean episode steps | `9.1` | `9.1` | `0.0` |
+
+Current local evaluation snapshot from `outputs/train_eval_report.json`:
+
+- evaluated across all 10 task families
+- evaluation seeds: `7,11`
+- strongest improvements appear in `executive_security_escalation` and `security_and_refund_hard`
+- hardest remaining tasks are `mixed_queue_command_center`, `followup_reprioritization_queue`, and `escalation_rejection_recovery`
+
+Also include one short qualitative comparison:
+
+- baseline behavior on one hard task
+- trained behavior on the same task
+- what changed in routing, safety, or delayed-outcome handling
+
+Recommended qualitative example from the current report:
+
+- `executive_security_escalation`: baseline-style evaluation scored `0.6051`, trained evaluation scored `0.99`
+- `security_and_refund_hard`: baseline-style evaluation averaged `0.6583`, trained evaluation averaged `0.9`
+- these gains make a good demo story because they show better prioritization and safer specialist routing
+
+## Reward Hacking Safeguards
+
+The environment is intentionally designed so shallow shortcuts do not score well.
+Current safeguards include:
+
+- penalties for premature finish and premature resolution
+- invalid tool-use penalties when an action is run in the wrong enterprise app
+- queue-priority penalties when urgent security or outage work is ignored
+- delayed downstream failures such as `ticket_reopened` and `escalation_rejected`
+- task-specific workflow requirements such as incident creation before escalation
+- policy-aware reply checks and forbidden unsafe phrasing in sensitive tasks
+
+Concrete examples already covered by tests and local audit:
+
+- resolving a reopen-prone refund too early triggers `ticket_reopened`
+- sending a weak outage escalation can trigger `escalation_rejected`
+- handling billing before an urgent security incident triggers priority penalties
+- using the wrong app for a tool action is rejected and penalized
+
+Before final submission, it is worth preserving one short red-team table in the README:
+
+| Shortcut attempt | Expected guardrail | Status |
+| --- | --- | --- |
+| Premature finish | penalty + low score | checked locally |
+| Wrong tool usage | invalid action penalty | checked locally |
+| Weak escalation | rejection or downstream penalty | checked locally |
+| Refund shortcut without review | reopen event | checked locally |
 
 ## Hackathon Theme Fit
 
@@ -327,6 +402,7 @@ This script:
 - trains a classifier
 - compares heuristic routing versus trained routing
 - reports both classification deltas and environment-score deltas across the task suite
+- emits judge-friendly summary fields such as success rate, mean steps, and per-task aggregates
 
 ### Unsloth + TRL Colab Path
 
@@ -383,14 +459,16 @@ For local experimentation, the package also includes a direct baseline runner:
 
 ```bash
 set OPENAI_API_KEY=your_key_here
-python -m support_triage_env.baseline.run_baseline --model gpt-4.1-mini-2025-04-14
+python -m support_triage_env.baseline.run_baseline --model gpt-4.1-mini-2025-04-14 --seed 7
 ```
 
 By default, this runs **all task families**. You can also run a subset:
 
 ```bash
-python -m support_triage_env.baseline.run_baseline --tasks billing_refund_easy,incident_coordination_outage
+python -m support_triage_env.baseline.run_baseline --tasks billing_refund_easy,incident_coordination_outage --seed 7
 ```
+
+Using a fixed seed is recommended so baseline and trained comparisons are reproducible.
 
 ## Project Structure
 
@@ -435,3 +513,4 @@ Recommended final submission checklist:
 - export a before/after metrics table from `train_and_evaluate.py` and the Colab notebook
 - save reward or evaluation plots into the repo or link them from the README
 - deploy the environment to a Hugging Face Space and link it here
+- generate `outputs/train_eval_summary.md` from the JSON report for judge-facing copy/paste

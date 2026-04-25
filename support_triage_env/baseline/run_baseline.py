@@ -16,6 +16,8 @@ from support_triage_env.tasks import task_ids
 DEFAULT_MODEL = "gpt-4.1-mini-2025-04-14"
 DEFAULT_MAX_TURNS = int(os.environ.get("BASELINE_MAX_TURNS", "24"))
 DEFAULT_TASKS = task_ids()
+DEFAULT_SEED = int(os.environ.get("BASELINE_SEED", "7"))
+SUCCESS_SCORE_THRESHOLD = 0.85
 
 
 def build_prompt(observation: dict[str, Any], state: dict[str, Any]) -> str:
@@ -53,9 +55,15 @@ def parse_action(text: str) -> SupportTriageAction:
     return SupportTriageAction(**data)
 
 
-def run_task(client: OpenAI, model: str, task_id: str, max_turns: int = DEFAULT_MAX_TURNS) -> dict[str, Any]:
+def run_task(
+    client: OpenAI,
+    model: str,
+    task_id: str,
+    max_turns: int = DEFAULT_MAX_TURNS,
+    seed: int = DEFAULT_SEED,
+) -> dict[str, Any]:
     env = SupportTriageSimulator()
-    observation = env.reset(task_id=task_id)
+    observation = env.reset(task_id=task_id, seed=seed)
     trajectory: list[dict[str, Any]] = []
     task_budget = max(max_turns, int(observation.task.max_steps))
 
@@ -86,8 +94,10 @@ def run_task(client: OpenAI, model: str, task_id: str, max_turns: int = DEFAULT_
     final_state = env.state()
     return {
         "task_id": task_id,
+        "seed": seed,
         "difficulty": final_state.difficulty,
         "score": final_state.final_score,
+        "success": final_state.final_score >= SUCCESS_SCORE_THRESHOLD,
         "cumulative_reward": final_state.cumulative_reward,
         "steps": final_state.step_count,
         "trajectory": trajectory,
@@ -117,6 +127,12 @@ def main() -> None:
         default=DEFAULT_MAX_TURNS,
         help="Maximum turns per task before local cutoff. Defaults to 24.",
     )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=DEFAULT_SEED,
+        help="Deterministic simulator seed to use for every baseline task run. Defaults to 7.",
+    )
     args = parser.parse_args()
 
     api_key = os.environ.get("OPENAI_API_KEY")
@@ -125,11 +141,17 @@ def main() -> None:
 
     client = OpenAI(api_key=api_key)
     task_ids_to_run = [task_id.strip() for task_id in args.tasks.split(",") if task_id.strip()]
-    results = [run_task(client, args.model, task_id, max_turns=args.max_turns) for task_id in task_ids_to_run]
+    results = [
+        run_task(client, args.model, task_id, max_turns=args.max_turns, seed=args.seed)
+        for task_id in task_ids_to_run
+    ]
     mean_score = sum(item["score"] for item in results) / len(results)
+    success_count = sum(1 for item in results if item["success"])
     payload = {
         "model": args.model,
+        "seed": args.seed,
         "mean_score": round(mean_score, 4),
+        "success_rate": round(success_count / len(results), 4),
         "task_count": len(results),
         "results": results,
     }

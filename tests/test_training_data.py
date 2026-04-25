@@ -1,7 +1,9 @@
 from support_triage_env.training_data import (
+    DEFAULT_HARD_TASK_IDS,
     _repo_dataset_file,
     build_combined_training_dataset,
     infer_support_label,
+    upweight_synthetic_task_rows,
 )
 
 
@@ -50,3 +52,40 @@ def test_combined_training_dataset_uses_repo_seed_csvs():
     assert "billing_approval" in labels
     assert "incident_coordination" in labels
     assert "security_escalation" in labels
+
+
+def test_upweight_synthetic_task_rows_only_expands_selected_synthetic_tasks():
+    rows = [
+        {
+            "source": "synthetic",
+            "text": "hard task row",
+            "label": "incident_coordination",
+            "metadata": {"task_id": DEFAULT_HARD_TASK_IDS[0]},
+        },
+        {
+            "source": "synthetic",
+            "text": "easy task row",
+            "label": "billing_refund",
+            "metadata": {"task_id": "billing_refund_easy"},
+        },
+        {
+            "source": "customer_support_tickets",
+            "text": "external row",
+            "label": "billing_refund",
+            "metadata": {},
+        },
+    ]
+
+    expanded = upweight_synthetic_task_rows(
+        rows,
+        task_ids=[DEFAULT_HARD_TASK_IDS[0]],
+        multiplier=3,
+    )
+
+    hard_rows = [row for row in expanded if row["text"] == "hard task row"]
+    easy_rows = [row for row in expanded if row["text"] == "easy task row"]
+    external_rows = [row for row in expanded if row["text"] == "external row"]
+
+    assert len(hard_rows) == 3
+    assert len(easy_rows) == 1
+    assert len(external_rows) == 1

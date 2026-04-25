@@ -19,6 +19,11 @@ TARGET_LABELS = [
     "security_account_takeover",
     "account_access",
 ]
+DEFAULT_HARD_TASK_IDS = [
+    "mixed_queue_command_center",
+    "followup_reprioritization_queue",
+    "escalation_rejection_recovery",
+]
 
 
 def _normalize(text: str) -> str:
@@ -171,6 +176,24 @@ def rows_from_synthetic(examples_per_task: int, seed: int) -> list[dict[str, Any
             )
         )
     return rows
+
+
+def upweight_synthetic_task_rows(
+    rows: list[dict[str, Any]],
+    task_ids: list[str],
+    multiplier: int = 1,
+) -> list[dict[str, Any]]:
+    if multiplier <= 1 or not task_ids:
+        return list(rows)
+
+    hard_task_ids = set(task_ids)
+    expanded_rows: list[dict[str, Any]] = []
+    for row in rows:
+        expanded_rows.append(row)
+        metadata = row.get("metadata") or {}
+        if row.get("source") == "synthetic" and metadata.get("task_id") in hard_task_ids:
+            expanded_rows.extend([dict(row) for _ in range(multiplier - 1)])
+    return expanded_rows
 
 
 def load_local_customer_support_csv(path: Path) -> list[dict[str, Any]]:
@@ -348,6 +371,8 @@ def load_complaint_data_csv(path: Path) -> list[dict[str, Any]]:
 def build_combined_training_dataset(
     synthetic_examples_per_task: int = 1000,
     synthetic_seed: int = 0,
+    hard_task_ids: list[str] | None = None,
+    hard_task_multiplier: int = 1,
     multilingual_csv: str | None = None,
     ticket_tagger_csv: str | None = None,
     banking_csv: str | None = None,
@@ -358,6 +383,11 @@ def build_combined_training_dataset(
     rows = rows_from_synthetic(
         examples_per_task=synthetic_examples_per_task,
         seed=synthetic_seed,
+    )
+    rows = upweight_synthetic_task_rows(
+        rows,
+        task_ids=hard_task_ids or DEFAULT_HARD_TASK_IDS,
+        multiplier=hard_task_multiplier,
     )
     if customer_support_csv:
         rows.extend(load_local_customer_support_csv(Path(customer_support_csv)))
@@ -390,6 +420,17 @@ def main() -> None:
     parser.add_argument("--synthetic-examples-per-task", type=int, default=1000)
     parser.add_argument("--synthetic-seed", type=int, default=0)
     parser.add_argument(
+        "--hard-task-ids",
+        default=",".join(DEFAULT_HARD_TASK_IDS),
+        help="Comma-separated synthetic task ids to oversample during training-data build.",
+    )
+    parser.add_argument(
+        "--hard-task-multiplier",
+        type=int,
+        default=1,
+        help="How many times to replicate rows from the selected hard synthetic task families.",
+    )
+    parser.add_argument(
         "--customer-support-csv",
         default=_repo_dataset_file("customer_support_tickets.csv"),
     )
@@ -416,6 +457,8 @@ def main() -> None:
     rows = build_combined_training_dataset(
         synthetic_examples_per_task=args.synthetic_examples_per_task,
         synthetic_seed=args.synthetic_seed,
+        hard_task_ids=[task_id.strip() for task_id in args.hard_task_ids.split(",") if task_id.strip()],
+        hard_task_multiplier=args.hard_task_multiplier,
         customer_support_csv=args.customer_support_csv,
         customer_support_200k_csv=args.customer_support_200k_csv,
         multilingual_csv=args.multilingual_csv,
@@ -430,6 +473,8 @@ def main() -> None:
             {
                 "output": str(output_path),
                 "rows": len(rows),
+                "hard_task_ids": [task_id.strip() for task_id in args.hard_task_ids.split(",") if task_id.strip()],
+                "hard_task_multiplier": args.hard_task_multiplier,
                 "labels": summarize_labels(rows),
             }
         )

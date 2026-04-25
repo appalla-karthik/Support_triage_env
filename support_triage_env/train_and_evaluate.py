@@ -13,6 +13,15 @@ from sklearn.metrics import accuracy_score, classification_report
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 
+from inference import (
+    _default_escalation_note,
+    _default_reply_for_ticket,
+    _reply_is_present,
+    _scripted_priority,
+    _task_ticket_defaults,
+    postprocess_action,
+)
+
 from support_triage_env.models import (
     ActionType,
     EnterpriseApp,
@@ -27,6 +36,7 @@ from support_triage_env.models import (
 from support_triage_env.simulator import SupportTriageSimulator
 from support_triage_env.tasks import task_ids
 from support_triage_env.training_data import (
+    DEFAULT_HARD_TASK_IDS,
     _repo_dataset_file,
     build_combined_training_dataset,
     infer_support_label,
@@ -35,6 +45,7 @@ from support_triage_env.training_data import (
 
 
 DEFAULT_TASKS = task_ids()
+SUCCESS_SCORE_THRESHOLD = 0.85
 
 
 def _majority_label(labels: list[str]) -> str:
@@ -58,6 +69,11 @@ def _has_action(state_payload: dict, action_type: str, ticket_id: str) -> bool:
         entry.get("action_type") == action_type and entry.get("ticket_id") == ticket_id
         for entry in history
     )
+
+
+def _last_action(state_payload: dict) -> dict | None:
+    history = state_payload.get("action_history") or []
+    return history[-1] if history else None
 
 
 def _find_ticket(state_payload: dict, ticket_id: str) -> dict | None:
@@ -186,59 +202,136 @@ def _default_escalation(ticket: dict, category: str) -> str:
     )
 
 
-def _task_specific_action(task_id: str, ticket: dict, state_payload: dict) -> dict | None:
+def _task_specific_action(task_id: str, ticket: dict, state_payload: dict) -> SupportTriageAction | None:
     ticket_id = ticket["ticket_id"]
     tags = set(ticket.get("tags") or [])
-
+    last_action = _last_action(state_payload)
     pending_events = state_payload.get("pending_events") or []
-    if any(event.get("ticket_id") == ticket_id for event in pending_events):
-        return {"action_type": ActionType.VIEW_TICKET.value, "ticket_id": ticket_id}
+    if any(
+        event.get("ticket_id") == ticket_id and event.get("status") != "applied"
+        for event in pending_events
+    ):
+        if _has_action(state_payload, ActionType.VIEW_TICKET.value, ticket_id):
+            return None
+        if (
+            last_action
+            and last_action.get("action_type") == ActionType.VIEW_TICKET.value
+            and last_action.get("ticket_id") == ticket_id
+        ):
+            return None
+        return SupportTriageAction(action_type=ActionType.VIEW_TICKET, ticket_id=ticket_id)
 
     if task_id in {"enterprise_refund_investigation", "refund_reopen_review"} or "reopen-risk" in tags:
         if not _has_action(state_payload, ActionType.LOOKUP_ACCOUNT.value, ticket_id):
-            return {"action_type": ActionType.LOOKUP_ACCOUNT.value, "ticket_id": ticket_id, "app": EnterpriseApp.CRM_WORKSPACE.value}
+            return SupportTriageAction(
+                action_type=ActionType.LOOKUP_ACCOUNT,
+                ticket_id=ticket_id,
+                app=EnterpriseApp.CRM_WORKSPACE,
+            )
         if not _has_action(state_payload, ActionType.CHECK_BILLING_STATUS.value, ticket_id):
-            return {"action_type": ActionType.CHECK_BILLING_STATUS.value, "ticket_id": ticket_id, "app": EnterpriseApp.BILLING_SYSTEM.value}
+            return SupportTriageAction(
+                action_type=ActionType.CHECK_BILLING_STATUS,
+                ticket_id=ticket_id,
+                app=EnterpriseApp.BILLING_SYSTEM,
+            )
         if not _has_action(state_payload, ActionType.SEARCH_POLICY.value, ticket_id):
             query = "enterprise refund approval thresholds" if task_id == "refund_reopen_review" or "reopen-risk" in tags else "duplicate charge refund workflow"
-            return {"action_type": ActionType.SEARCH_POLICY.value, "ticket_id": ticket_id, "app": EnterpriseApp.POLICY_HUB.value, "message": query}
+            return SupportTriageAction(
+                action_type=ActionType.SEARCH_POLICY,
+                ticket_id=ticket_id,
+                app=EnterpriseApp.POLICY_HUB,
+                message=query,
+            )
 
     if task_id in {"incident_coordination_outage", "escalation_rejection_recovery"} or "incident" in tags or "incident-follow-up" in tags:
         if not _has_action(state_payload, ActionType.LOOKUP_ACCOUNT.value, ticket_id):
-            return {"action_type": ActionType.LOOKUP_ACCOUNT.value, "ticket_id": ticket_id, "app": EnterpriseApp.CRM_WORKSPACE.value}
+            return SupportTriageAction(
+                action_type=ActionType.LOOKUP_ACCOUNT,
+                ticket_id=ticket_id,
+                app=EnterpriseApp.CRM_WORKSPACE,
+            )
         if not _has_action(state_payload, ActionType.SEARCH_POLICY.value, ticket_id):
             query = "escalation packet review policy" if task_id == "escalation_rejection_recovery" or "escalation-review" in tags else "product outage escalation checklist"
-            return {"action_type": ActionType.SEARCH_POLICY.value, "ticket_id": ticket_id, "app": EnterpriseApp.POLICY_HUB.value, "message": query}
+            return SupportTriageAction(
+                action_type=ActionType.SEARCH_POLICY,
+                ticket_id=ticket_id,
+                app=EnterpriseApp.POLICY_HUB,
+                message=query,
+            )
         if not _has_action(state_payload, ActionType.CREATE_INCIDENT.value, ticket_id):
-            return {
-                "action_type": ActionType.CREATE_INCIDENT.value,
-                "ticket_id": ticket_id,
-                "app": EnterpriseApp.INCIDENT_TRACKER.value,
-                "team": TicketTeam.ENGINEERING.value,
-                "severity": IncidentSeverity.HIGH.value,
-                "message": f"Incident created for {ticket_id}: {ticket['subject']}",
-            }
+            return SupportTriageAction(
+                action_type=ActionType.CREATE_INCIDENT,
+                ticket_id=ticket_id,
+                app=EnterpriseApp.INCIDENT_TRACKER,
+                team=TicketTeam.ENGINEERING,
+                severity=IncidentSeverity.HIGH,
+                message=f"Incident created for {ticket_id}: {ticket['subject']}",
+            )
 
     if task_id in {"executive_security_escalation"} or "trust" in tags or "executive" in tags:
         if not _has_action(state_payload, ActionType.LOOKUP_ACCOUNT.value, ticket_id):
-            return {"action_type": ActionType.LOOKUP_ACCOUNT.value, "ticket_id": ticket_id, "app": EnterpriseApp.CRM_WORKSPACE.value}
+            return SupportTriageAction(
+                action_type=ActionType.LOOKUP_ACCOUNT,
+                ticket_id=ticket_id,
+                app=EnterpriseApp.CRM_WORKSPACE,
+            )
         if not _has_action(state_payload, ActionType.SEARCH_POLICY.value, ticket_id):
-            return {"action_type": ActionType.SEARCH_POLICY.value, "ticket_id": ticket_id, "app": EnterpriseApp.POLICY_HUB.value, "message": "account takeover response policy"}
+            return SupportTriageAction(
+                action_type=ActionType.SEARCH_POLICY,
+                ticket_id=ticket_id,
+                app=EnterpriseApp.POLICY_HUB,
+                message="account takeover response policy",
+            )
         if not _has_action(state_payload, ActionType.ADD_INTERNAL_NOTE.value, ticket_id):
-            return {
-                "action_type": ActionType.ADD_INTERNAL_NOTE.value,
-                "ticket_id": ticket_id,
-                "app": EnterpriseApp.TRUST_SAFETY_CONSOLE.value,
-                "message": "Trust escalation note captured with executive security indicators.",
-            }
+            return SupportTriageAction(
+                action_type=ActionType.ADD_INTERNAL_NOTE,
+                ticket_id=ticket_id,
+                app=EnterpriseApp.TRUST_SAFETY_CONSOLE,
+                message="Trust escalation note captured with executive security indicators.",
+            )
 
-    if task_id == "followup_reprioritization_queue" or "responds-fast" in tags:
+    if task_id == "followup_reprioritization_queue" and "responds-fast" in tags:
         if not _has_action(state_payload, ActionType.REQUEST_INFO.value, ticket_id):
-            return {
-                "action_type": ActionType.REQUEST_INFO.value,
-                "ticket_id": ticket_id,
-                "message": "Please share the workspace, browser, and approximate timestamp so we can investigate the outage.",
-            }
+            return SupportTriageAction(
+                action_type=ActionType.REQUEST_INFO,
+                ticket_id=ticket_id,
+                message="Please share the workspace, browser, and approximate timestamp so we can investigate the outage.",
+            )
+        if not _has_action(state_payload, ActionType.LOOKUP_ACCOUNT.value, ticket_id):
+            return SupportTriageAction(
+                action_type=ActionType.LOOKUP_ACCOUNT,
+                ticket_id=ticket_id,
+                app=EnterpriseApp.CRM_WORKSPACE,
+            )
+        if not _has_action(state_payload, ActionType.SEARCH_POLICY.value, ticket_id):
+            return SupportTriageAction(
+                action_type=ActionType.SEARCH_POLICY,
+                ticket_id=ticket_id,
+                app=EnterpriseApp.POLICY_HUB,
+                message="product outage escalation checklist",
+            )
+        if not _has_action(state_payload, ActionType.CREATE_INCIDENT.value, ticket_id):
+            return SupportTriageAction(
+                action_type=ActionType.CREATE_INCIDENT,
+                ticket_id=ticket_id,
+                app=EnterpriseApp.INCIDENT_TRACKER,
+                team=TicketTeam.ENGINEERING,
+                severity=IncidentSeverity.HIGH,
+                message=f"Incident created for {ticket_id}: {ticket['subject']}",
+            )
+        if not _reply_is_present(ticket):
+            return SupportTriageAction(
+                action_type=ActionType.DRAFT_REPLY,
+                ticket_id=ticket_id,
+                message=_default_reply_for_ticket(ticket, task_id),
+            )
+        if ticket.get("current_status") != TicketStatus.ESCALATED.value:
+            return SupportTriageAction(
+                action_type=ActionType.ESCALATE_TICKET,
+                ticket_id=ticket_id,
+                team=TicketTeam.ENGINEERING,
+                message=_default_escalation_note(ticket, task_id),
+            )
 
     return None
 
@@ -247,80 +340,163 @@ def _build_policy_action(
     observation_payload: dict,
     state_payload: dict,
     predictor: Callable[[str], str],
+    *,
+    use_hybrid_workflow: bool = False,
 ) -> SupportTriageAction:
+    progress = observation_payload.get("progress", {})
+    score = float(progress.get("score", 0.0) or 0.0)
+    outstanding = progress.get("outstanding_requirements", [])
+    task_id = state_payload.get("task_id") or observation_payload.get("task", {}).get("task_id")
+    if use_hybrid_workflow and score >= SUCCESS_SCORE_THRESHOLD and not outstanding:
+        return SupportTriageAction(action_type=ActionType.FINISH)
+
+    terminal_statuses = {TicketStatus.RESOLVED.value}
+    if not use_hybrid_workflow or task_id != "followup_reprioritization_queue":
+        terminal_statuses.add(TicketStatus.ESCALATED.value)
+
     tickets = [
         ticket
         for ticket in state_payload.get("tickets", [])
-        if ticket.get("current_status") not in {TicketStatus.RESOLVED.value, TicketStatus.ESCALATED.value}
+        if ticket.get("current_status") not in terminal_statuses
     ]
     if not tickets:
         return SupportTriageAction(action_type=ActionType.FINISH)
 
-    scored_tickets = []
-    for ticket in tickets:
-        label = predictor(_ticket_text(ticket))
-        scored_tickets.append((_priority_rank(ticket, label), ticket, label))
-    scored_tickets.sort(key=lambda item: item[0])
+    hard_workflow_tasks = set(DEFAULT_HARD_TASK_IDS) | {"mixed_queue_command_center"}
 
-    task_id = state_payload.get("task_id") or observation_payload.get("task", {}).get("task_id")
+    if use_hybrid_workflow:
+        tickets = sorted(
+            tickets,
+            key=lambda ticket: _scripted_priority(ticket, task_id or ""),
+        )
+        scored_tickets = [
+            (_scripted_priority(ticket, task_id or ""), ticket, predictor(_ticket_text(ticket)))
+            for ticket in tickets
+        ]
+    else:
+        scored_tickets = []
+        for ticket in tickets:
+            label = predictor(_ticket_text(ticket))
+            scored_tickets.append((_priority_rank(ticket, label), ticket, label))
+        scored_tickets.sort(key=lambda item: item[0])
 
     for _, ticket, predicted_label in scored_tickets:
         task_action = _task_specific_action(task_id, ticket, state_payload)
         if task_action:
-            return SupportTriageAction(**task_action)
+            action = task_action
+            if use_hybrid_workflow:
+                return postprocess_action(action, observation_payload, state_payload)
+            return action
 
-        category, priority, team = _route_for_label(predicted_label, ticket)
+        if use_hybrid_workflow and task_id in hard_workflow_tasks:
+            defaults = _task_ticket_defaults(task_id, ticket)
+            category, priority, team = (
+                defaults["category"],
+                defaults["priority"],
+                defaults["team"],
+            )
+        else:
+            category, priority, team = _route_for_label(predicted_label, ticket)
+
         if (
             ticket.get("current_category") != category
             or ticket.get("current_priority") != priority
             or ticket.get("assigned_team") != team
         ):
-            return SupportTriageAction(
+            action = SupportTriageAction(
                 action_type=ActionType.CLASSIFY_TICKET,
                 ticket_id=ticket["ticket_id"],
                 category=TicketCategory(category),
                 priority=TicketPriority(priority),
                 team=TicketTeam(team),
             )
+            if use_hybrid_workflow:
+                return postprocess_action(action, observation_payload, state_payload)
+            return action
 
         if not ticket.get("outbound_messages"):
-            return SupportTriageAction(
+            action = SupportTriageAction(
                 action_type=ActionType.DRAFT_REPLY,
                 ticket_id=ticket["ticket_id"],
-                message=_default_reply(ticket, category),
+                message=(
+                    _default_reply_for_ticket(ticket, task_id or "")
+                    if use_hybrid_workflow
+                    else _default_reply(ticket, category)
+                ),
             )
+            if use_hybrid_workflow:
+                return postprocess_action(action, observation_payload, state_payload)
+            return action
 
         if category in {
             TicketCategory.BILLING_REFUND.value,
             TicketCategory.BILLING_APPROVAL.value,
         }:
-            return SupportTriageAction(
+            action = SupportTriageAction(
                 action_type=ActionType.RESOLVE_TICKET,
                 ticket_id=ticket["ticket_id"],
                 resolution_code=ResolutionCode.REFUND_SUBMITTED,
             )
+            if use_hybrid_workflow:
+                return postprocess_action(action, observation_payload, state_payload)
+            return action
 
         if category == TicketCategory.ACCOUNT_ACCESS.value:
-            return SupportTriageAction(
+            action = SupportTriageAction(
                 action_type=ActionType.RESOLVE_TICKET,
                 ticket_id=ticket["ticket_id"],
                 resolution_code=ResolutionCode.PASSWORD_RESET_SENT,
             )
+            if use_hybrid_workflow:
+                return postprocess_action(action, observation_payload, state_payload)
+            return action
 
-        return SupportTriageAction(
+        action = SupportTriageAction(
             action_type=ActionType.ESCALATE_TICKET,
             ticket_id=ticket["ticket_id"],
             team=TicketTeam(team),
-            message=_default_escalation(ticket, category),
+            message=(
+                _default_escalation_note(ticket, task_id or "")
+                if use_hybrid_workflow
+                else _default_escalation(ticket, category)
+            ),
         )
+        if use_hybrid_workflow:
+            return postprocess_action(action, observation_payload, state_payload)
+        return action
 
     return SupportTriageAction(action_type=ActionType.FINISH)
+
+
+def _summarize_environment_runs(runs: list[dict]) -> dict:
+    success_count = sum(1 for run in runs if run["score"] >= SUCCESS_SCORE_THRESHOLD)
+    mean_steps = sum(run["steps"] for run in runs) / max(1, len(runs))
+    per_task: dict[str, dict[str, float | int]] = {}
+    for task_id in sorted({run["task_id"] for run in runs}):
+        task_runs = [run for run in runs if run["task_id"] == task_id]
+        per_task[task_id] = {
+            "mean_score": round(sum(run["score"] for run in task_runs) / len(task_runs), 4),
+            "success_rate": round(
+                sum(1 for run in task_runs if run["score"] >= SUCCESS_SCORE_THRESHOLD) / len(task_runs),
+                4,
+            ),
+            "mean_steps": round(sum(run["steps"] for run in task_runs) / len(task_runs), 2),
+            "num_runs": len(task_runs),
+        }
+    return {
+        "success_threshold": SUCCESS_SCORE_THRESHOLD,
+        "success_rate": round(success_count / max(1, len(runs)), 4),
+        "mean_steps": round(mean_steps, 2),
+        "per_task": per_task,
+    }
 
 
 def _evaluate_environment_policy(
     predictor: Callable[[str], str],
     seeds: list[int],
     tasks: list[str],
+    *,
+    use_hybrid_workflow: bool = False,
 ) -> dict:
     runs = []
     for task_id in tasks:
@@ -333,6 +509,7 @@ def _evaluate_environment_policy(
                     observation.model_dump(mode="json"),
                     env.state().model_dump(mode="json"),
                     predictor,
+                    use_hybrid_workflow=use_hybrid_workflow,
                 )
                 observation, _, done, _ = env.step(action)
             final_state = env.state()
@@ -341,17 +518,33 @@ def _evaluate_environment_policy(
                     "task_id": task_id,
                     "seed": seed,
                     "score": final_state.final_score,
+                    "success": final_state.final_score >= SUCCESS_SCORE_THRESHOLD,
                     "steps": final_state.step_count,
                 }
             )
     mean_score = sum(run["score"] for run in runs) / max(1, len(runs))
-    return {"mean_score": round(mean_score, 4), "runs": runs}
+    return {
+        "mean_score": round(mean_score, 4),
+        "summary": _summarize_environment_runs(runs),
+        "runs": runs,
+    }
 
 
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--synthetic-examples-per-task", type=int, default=500)
     parser.add_argument("--synthetic-seed", type=int, default=7)
+    parser.add_argument(
+        "--hard-task-ids",
+        default=",".join(DEFAULT_HARD_TASK_IDS),
+        help="Comma-separated synthetic task ids to oversample during training-data build.",
+    )
+    parser.add_argument(
+        "--hard-task-multiplier",
+        type=int,
+        default=3,
+        help="How many times to replicate rows from the selected hard synthetic task families.",
+    )
     parser.add_argument("--test-size", type=float, default=0.2)
     parser.add_argument("--random-state", type=int, default=42)
     parser.add_argument("--eval-seeds", default="7,11")
@@ -378,6 +571,8 @@ def main() -> None:
     rows = build_combined_training_dataset(
         synthetic_examples_per_task=args.synthetic_examples_per_task,
         synthetic_seed=args.synthetic_seed,
+        hard_task_ids=[task_id.strip() for task_id in args.hard_task_ids.split(",") if task_id.strip()],
+        hard_task_multiplier=args.hard_task_multiplier,
         customer_support_csv=args.customer_support_csv,
         customer_support_200k_csv=args.customer_support_200k_csv,
         banking_csv=args.banking_csv,
@@ -418,6 +613,7 @@ def main() -> None:
         predictor=lambda text: str(model.predict([text])[0]),
         seeds=eval_seeds,
         tasks=DEFAULT_TASKS,
+        use_hybrid_workflow=True,
     )
 
     model_output = Path(args.model_output)
@@ -427,6 +623,10 @@ def main() -> None:
 
     payload = {
         "rows": len(rows),
+        "tasks": DEFAULT_TASKS,
+        "eval_seeds": eval_seeds,
+        "hard_task_ids": [task_id.strip() for task_id in args.hard_task_ids.split(",") if task_id.strip()],
+        "hard_task_multiplier": args.hard_task_multiplier,
         "labels": summarize_labels(rows),
         "classification": {
             "heuristic_accuracy": round(float(heuristic_accuracy), 4),
@@ -434,10 +634,21 @@ def main() -> None:
             "accuracy_delta": round(float(trained_accuracy - heuristic_accuracy), 4),
             "trained_report": classification_report(y_test, trained_predictions, output_dict=True),
         },
+        "headline": {
+            "classification_accuracy_delta": round(float(trained_accuracy - heuristic_accuracy), 4),
+            "environment_score_delta": round(trained_env["mean_score"] - heuristic_env["mean_score"], 4),
+            "heuristic_success_rate": heuristic_env["summary"]["success_rate"],
+            "trained_success_rate": trained_env["summary"]["success_rate"],
+            "success_rate_delta": round(
+                trained_env["summary"]["success_rate"] - heuristic_env["summary"]["success_rate"], 4
+            ),
+        },
         "environment": {
             "heuristic_mean_score": heuristic_env["mean_score"],
             "trained_mean_score": trained_env["mean_score"],
             "score_delta": round(trained_env["mean_score"] - heuristic_env["mean_score"], 4),
+            "heuristic_summary": heuristic_env["summary"],
+            "trained_summary": trained_env["summary"],
             "heuristic_runs": heuristic_env["runs"],
             "trained_runs": trained_env["runs"],
         },
