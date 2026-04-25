@@ -11,7 +11,7 @@ from openai import APIStatusError, OpenAI
 from support_triage_env.models import SupportTriageAction, SupportTriageObservation, SupportTriageState
 from support_triage_env.simulator import SupportTriageSimulator
 from support_triage_env.models import DEFAULT_STRICT_SCORE, strict_unit_interval
-from support_triage_env.tasks import task_ids
+from support_triage_env.tasks import derive_department_priority, task_ids
 
 try:
     from support_triage_env.client import SupportTriageEnv
@@ -76,12 +76,16 @@ SYSTEM_PROMPT = textwrap.dedent(
     Allowed enums:
     category: billing_refund | billing_approval | product_bug | incident_coordination | security_account_takeover | security_escalation | account_access
     priority: low | medium | high | urgent
+    department_priority: low | medium | high | urgent
     team: billing_ops | engineering | trust_safety | customer_support
     resolution_code: refund_submitted | workaround_shared | password_reset_sent | no_action_needed
 
     Output rules:
     - Return JSON only, no markdown.
     - Include only fields that are needed for the chosen action.
+    - `priority` is the global support-queue priority.
+    - `department_priority` is the internal priority for the routed team after handoff.
+    - Set both priorities using risk, urgency, SLA pressure, and business impact.
     - Prefer safe, policy-compliant actions.
     - If the objective is fully completed, return {"action_type":"finish"}.
     """
@@ -191,6 +195,7 @@ def normalize_action_payload(data: dict) -> dict:
         "internal_note": "message",
         "note": "message",
         "escalation_note": "message",
+        "internal_priority": "department_priority",
     }
     for source_key, target_key in alias_map.items():
         if source_key in normalized and target_key not in normalized:
@@ -202,6 +207,7 @@ def normalize_action_payload(data: dict) -> dict:
         "ticket_id",
         "category",
         "priority",
+        "department_priority",
         "team",
         "app",
         "target_id",
@@ -338,10 +344,16 @@ def _ticket_text(ticket: dict) -> str:
 
 
 def _infer_ticket_defaults(ticket: dict) -> dict[str, str]:
-    if ticket.get("current_category") and ticket.get("current_priority") and ticket.get("assigned_team"):
+    if (
+        ticket.get("current_category")
+        and ticket.get("current_priority")
+        and ticket.get("current_department_priority")
+        and ticket.get("assigned_team")
+    ):
         return {
             "category": ticket["current_category"],
             "priority": ticket["current_priority"],
+            "department_priority": ticket["current_department_priority"],
             "team": ticket["assigned_team"],
         }
 
@@ -367,9 +379,11 @@ def _infer_ticket_defaults(ticket: dict) -> dict[str, str]:
             or any(tag in tag_text for tag in ["executive", "trust"])
             else "security_account_takeover"
         )
+        queue_priority = "urgent"
         return {
             "category": category,
-            "priority": "urgent",
+            "priority": queue_priority,
+            "department_priority": derive_department_priority(ticket, queue_priority, category, "trust_safety").value,
             "team": "trust_safety",
         }
     if any(
@@ -392,9 +406,11 @@ def _infer_ticket_defaults(ticket: dict) -> dict[str, str]:
             or any(tag in tag_text for tag in ["reopen-risk", "policy-review", "vip"])
             else "billing_refund"
         )
+        queue_priority = "high" if category == "billing_approval" else "medium"
         return {
             "category": category,
-            "priority": "high" if category == "billing_approval" else "medium",
+            "priority": queue_priority,
+            "department_priority": derive_department_priority(ticket, queue_priority, category, "billing_ops").value,
             "team": "billing_ops",
         }
     if any(
@@ -419,14 +435,18 @@ def _infer_ticket_defaults(ticket: dict) -> dict[str, str]:
             or any(tag in tag_text for tag in ["incident", "incident-follow-up", "escalation-review"])
             else "product_bug"
         )
+        queue_priority = "high"
         return {
             "category": category,
-            "priority": "high",
+            "priority": queue_priority,
+            "department_priority": derive_department_priority(ticket, queue_priority, category, "engineering").value,
             "team": "engineering",
         }
+    queue_priority = "medium"
     return {
         "category": "account_access",
-        "priority": "medium",
+        "priority": queue_priority,
+        "department_priority": derive_department_priority(ticket, queue_priority, "account_access", "customer_support").value,
         "team": "customer_support",
     }
 
@@ -440,24 +460,28 @@ def _task_ticket_defaults(task_id: str, ticket: dict) -> dict[str, str]:
             return {
                 "category": "security_account_takeover",
                 "priority": "urgent",
+                "department_priority": "urgent",
                 "team": "trust_safety",
             }
         if "outage" in tags or "incident-follow-up" in tags:
             return {
                 "category": "product_bug",
                 "priority": "high",
+                "department_priority": "urgent",
                 "team": "engineering",
             }
         if "billing" in tags and "refund" in tags:
             return {
                 "category": "billing_refund",
                 "priority": "high",
+                "department_priority": "high",
                 "team": "billing_ops",
             }
         if "access" in tags:
             return {
                 "category": "account_access",
                 "priority": "medium",
+                "department_priority": "low",
                 "team": "customer_support",
             }
 
@@ -465,6 +489,7 @@ def _task_ticket_defaults(task_id: str, ticket: dict) -> dict[str, str]:
         return {
             "category": "incident_coordination",
             "priority": "high",
+            "department_priority": "urgent",
             "team": "engineering",
         }
 
@@ -644,6 +669,15 @@ def _task_specific_action(task_id: str, ticket: dict, state: dict) -> SupportTri
                 message=query,
             )
 
+    if task_id == "export_outage_medium" or ("outage" in tags and "incident-follow-up" not in tags and "incident" not in tags):
+        if not _has_action(state, "search_policy", ticket_id):
+            return SupportTriageAction(
+                action_type="search_policy",
+                ticket_id=ticket_id,
+                app="policy_hub",
+                message="product outage escalation checklist",
+            )
+
     if (
         task_id in {"incident_coordination_outage", "escalation_rejection_recovery"}
         or "incident" in tags
@@ -675,6 +709,15 @@ def _task_specific_action(task_id: str, ticket: dict, state: dict) -> SupportTri
                 team="engineering",
                 severity="high",
                 message=f"Incident created for {ticket_id}: {ticket['subject']}",
+            )
+
+    if task_id == "security_and_refund_hard" and "security" in tags:
+        if not _has_action(state, "search_policy", ticket_id):
+            return SupportTriageAction(
+                action_type="search_policy",
+                ticket_id=ticket_id,
+                app="policy_hub",
+                message="account takeover response policy",
             )
 
     if task_id == "executive_security_escalation" or "trust" in tags or "executive" in tags:
@@ -759,6 +802,7 @@ def _scripted_policy_action(
         if (
             ticket.get("current_category") != defaults["category"]
             or ticket.get("current_priority") != defaults["priority"]
+            or ticket.get("current_department_priority") != defaults["department_priority"]
             or ticket.get("assigned_team") != defaults["team"]
         ):
             return SupportTriageAction(
@@ -766,6 +810,7 @@ def _scripted_policy_action(
                 ticket_id=ticket["ticket_id"],
                 category=defaults["category"],
                 priority=defaults["priority"],
+                department_priority=defaults["department_priority"],
                 team=defaults["team"],
             )
 
@@ -844,12 +889,19 @@ def _recommended_next_action(state: dict) -> SupportTriageAction:
         assigned_team = ticket.get("assigned_team")
         outbound_messages = ticket.get("outbound_messages", [])
 
-        if current_category != defaults["category"] or current_priority != defaults["priority"] or assigned_team != defaults["team"]:
+        current_department_priority = ticket.get("current_department_priority")
+        if (
+            current_category != defaults["category"]
+            or current_priority != defaults["priority"]
+            or current_department_priority != defaults["department_priority"]
+            or assigned_team != defaults["team"]
+        ):
             return SupportTriageAction(
                 action_type="classify_ticket",
                 ticket_id=ticket["ticket_id"],
                 category=defaults["category"],
                 priority=defaults["priority"],
+                department_priority=defaults["department_priority"],
                 team=defaults["team"],
             )
 
@@ -931,6 +983,7 @@ def postprocess_action(
                 ticket_id=action.ticket_id,
                 category=action.category or defaults["category"],
                 priority=action.priority or defaults["priority"],
+                department_priority=action.department_priority or defaults["department_priority"],
                 team=action.team or defaults["team"],
             )
 

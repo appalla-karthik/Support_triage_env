@@ -37,6 +37,7 @@ def test_postprocess_fills_missing_classification_fields():
     processed = postprocess_action(action, observation, state)
 
     assert processed.team.value == "billing_ops"
+    assert processed.department_priority.value == "medium"
 
 
 def test_postprocess_moves_on_after_repeated_escalation_loop():
@@ -101,6 +102,7 @@ def test_postprocess_moves_on_after_repeated_escalation_loop():
     assert processed.action_type.value == "classify_ticket"
     assert processed.ticket_id == "TCK-2002"
     assert processed.team.value == "billing_ops"
+    assert processed.department_priority.value == "medium"
 
 
 def test_security_escalation_note_keeps_context_without_unsafe_request():

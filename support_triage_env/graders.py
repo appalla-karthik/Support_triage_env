@@ -126,7 +126,45 @@ def _require_category(expectation) -> str:
 
 
 def _require_priority(expectation) -> str:
-    return f"Set priority to {expectation.priority.value}"
+    return f"Set queue priority to {expectation.priority.value}"
+
+
+def _require_department_priority(expectation) -> str:
+    return (
+        f"Set {expectation.team.value} internal priority to "
+        f"{expectation.department_priority.value}"
+    )
+
+
+def _score_priorities(
+    *,
+    ticket: TicketRecord,
+    expectation,
+    total_weight: float,
+    components: dict[str, float],
+    satisfied: list[str],
+    outstanding: list[str],
+    component_prefix: str = "correct",
+    queue_success: str | None = None,
+    department_success: str | None = None,
+) -> None:
+    queue_weight = round(total_weight * 0.6, 4)
+    department_weight = round(total_weight - queue_weight, 4)
+
+    if ticket.current_priority == expectation.priority:
+        components[f"{component_prefix}_queue_priority"] = queue_weight
+        satisfied.append(queue_success or f"Marked queue priority {expectation.priority.value}")
+    else:
+        outstanding.append(_require_priority(expectation))
+
+    if ticket.current_department_priority == expectation.department_priority:
+        components[f"{component_prefix}_department_priority"] = department_weight
+        satisfied.append(
+            department_success
+            or f"Marked {expectation.team.value} internal priority {expectation.department_priority.value}"
+        )
+    else:
+        outstanding.append(_require_department_priority(expectation))
 
 
 def _require_team(expectation) -> str:
@@ -215,6 +253,61 @@ class BaseTaskGrader(ABC):
             or "export" in text
             or "500" in text
             or "502" in text
+        )
+
+    def _looks_billing_ticket(self, ticket: TicketRecord) -> bool:
+        text = self._ticket_text(ticket)
+        return (
+            ticket.current_category
+            in {
+                TicketCategory.BILLING_REFUND,
+                TicketCategory.BILLING_APPROVAL,
+            }
+            or "billing" in text
+            or "refund" in text
+            or "charge" in text
+            or "invoice" in text
+        )
+
+    def _requires_high_confidence_resolution(self, ticket: TicketRecord) -> bool:
+        high_risk_tags = {"vip", "month-end", "reopen-risk", "policy-review"}
+        return self._looks_billing_ticket(ticket) and (
+            ticket.customer_tier.lower() == "enterprise"
+            or any(tag in high_risk_tags for tag in ticket.tags)
+            or (ticket.sla_hours_remaining is not None and ticket.sla_hours_remaining <= 8)
+        )
+
+    def _supports_urgent_priority(self, ticket: TicketRecord, state: SupportTriageState) -> bool:
+        text = self._ticket_text(ticket)
+        strong_text_signal = any(
+            token in text
+            for token in {
+                "security",
+                "comprom",
+                "mfa",
+                "executive",
+                "urgent",
+                "incident",
+                "outage",
+                "critical",
+                "sev",
+            }
+        )
+        action_evidence = any(
+            self._action_taken(state, action_type, ticket.ticket_id)
+            for action_type in {
+                ActionType.LOOKUP_ACCOUNT,
+                ActionType.SEARCH_POLICY,
+                ActionType.CREATE_INCIDENT,
+                ActionType.CHECK_BILLING_STATUS,
+            }
+        )
+        return (
+            strong_text_signal
+            or "urgent" in ticket.tags
+            or "critical" in ticket.tags
+            or (ticket.sla_hours_remaining is not None and ticket.sla_hours_remaining <= 2)
+            or action_evidence
         )
 
     def _apply_queue_health_adjustments(
@@ -386,6 +479,88 @@ class BaseTaskGrader(ABC):
             )
             outstanding.append("Finish only after all required tickets reach their correct terminal state")
 
+    def _apply_confidence_adjustments(
+        self,
+        state: SupportTriageState,
+        penalties: dict[str, float],
+        outstanding: list[str],
+        violations: list[str],
+    ) -> None:
+        for expectation in self.scenario.expectations.values():
+            ticket = self._ticket_by_id(state, expectation.ticket_id)
+            has_policy_lookup = self._action_taken(state, ActionType.SEARCH_POLICY, ticket.ticket_id)
+            has_account_lookup = self._action_taken(state, ActionType.LOOKUP_ACCOUNT, ticket.ticket_id)
+            has_billing_lookup = self._action_taken(state, ActionType.CHECK_BILLING_STATUS, ticket.ticket_id)
+            has_incident_evidence = bool(ticket.linked_incident_id) or self._action_taken(
+                state, ActionType.CREATE_INCIDENT, ticket.ticket_id
+            )
+
+            if (
+                ticket.current_status == TicketStatus.RESOLVED
+                and self._requires_high_confidence_resolution(ticket)
+                and not (has_billing_lookup and has_policy_lookup)
+            ):
+                penalties["confidence_failure_resolution"] = max(
+                    penalties.get("confidence_failure_resolution", 0.0),
+                    0.12,
+                )
+                violations.append(
+                    f"{ticket.ticket_id} was resolved without enough evidence from billing and policy review"
+                )
+                outstanding.append(
+                    f"Gather billing and policy evidence before resolving {ticket.ticket_id}"
+                )
+
+            if (
+                ticket.current_status == TicketStatus.ESCALATED
+                and (self._is_security_ticket(ticket) or self._is_product_incident_ticket(ticket))
+                and not has_policy_lookup
+            ):
+                penalties["confidence_failure_escalation"] = max(
+                    penalties.get("confidence_failure_escalation", 0.0),
+                    0.10,
+                )
+                violations.append(
+                    f"{ticket.ticket_id} was escalated without checking current policy guidance first"
+                )
+                outstanding.append(
+                    f"Review policy guidance before escalating {ticket.ticket_id}"
+                )
+
+            if (
+                ticket.current_status == TicketStatus.ESCALATED
+                and self._is_product_incident_ticket(ticket)
+                and EnterpriseApp.INCIDENT_TRACKER in state.accessible_apps
+                and any(tag in {"incident", "incident-follow-up", "escalation-review"} for tag in ticket.tags)
+                and not (has_incident_evidence or has_account_lookup)
+            ):
+                penalties["confidence_failure_escalation"] = max(
+                    penalties.get("confidence_failure_escalation", 0.0),
+                    0.12,
+                )
+                violations.append(
+                    f"{ticket.ticket_id} was escalated without enough incident or account evidence"
+                )
+                outstanding.append(
+                    f"Collect incident or account evidence before escalating {ticket.ticket_id}"
+                )
+
+            if (
+                ticket.current_priority is not None
+                and ticket.current_priority.value == "urgent"
+                and not self._supports_urgent_priority(ticket, state)
+            ):
+                penalties["confidence_failure_urgent_priority"] = max(
+                    penalties.get("confidence_failure_urgent_priority", 0.0),
+                    0.10,
+                )
+                violations.append(
+                    f"{ticket.ticket_id} was marked urgent without enough supporting evidence"
+                )
+                outstanding.append(
+                    f"Only use urgent priority when the ticket has strong risk, SLA, or business-impact evidence"
+                )
+
     def _finalize_grade(
         self,
         state: SupportTriageState,
@@ -396,6 +571,9 @@ class BaseTaskGrader(ABC):
         violations: list[str],
     ) -> GradingSnapshot:
         self._apply_workflow_integrity_adjustments(
+            state, penalties, outstanding, violations
+        )
+        self._apply_confidence_adjustments(
             state, penalties, outstanding, violations
         )
         self._apply_queue_health_adjustments(state, penalties, outstanding, violations)
@@ -426,11 +604,16 @@ class BillingRefundEasyGrader(BaseTaskGrader):
         else:
             outstanding.append("Set category to billing_refund")
 
-        if ticket.current_priority == expectation.priority:
-            components["correct_priority"] = 0.15
-            satisfied.append("Marked priority medium")
-        else:
-            outstanding.append("Set priority to medium")
+        _score_priorities(
+            ticket=ticket,
+            expectation=expectation,
+            total_weight=0.15,
+            components=components,
+            satisfied=satisfied,
+            outstanding=outstanding,
+            queue_success="Marked queue priority medium",
+            department_success="Marked billing_ops internal priority medium",
+        )
 
         if ticket.assigned_team == expectation.team:
             components["correct_team"] = 0.15
@@ -484,11 +667,18 @@ class ExportOutageMediumGrader(BaseTaskGrader):
         else:
             outstanding.append("Set category to product_bug")
 
-        if ticket.current_priority == expectation.priority:
-            components["correct_priority"] = 0.12
-            satisfied.append("Marked priority high")
-        else:
-            outstanding.append("Set priority to high")
+        _score_priorities(
+            ticket=ticket,
+            expectation=expectation,
+            total_weight=0.12,
+            components=components,
+            satisfied=satisfied,
+            outstanding=outstanding,
+            queue_success="Marked queue priority high",
+            department_success=(
+                f"Marked engineering internal priority {expectation.department_priority.value}"
+            ),
+        )
 
         if ticket.assigned_team == expectation.team:
             components["correct_team"] = 0.11
@@ -584,11 +774,17 @@ class SecurityAndRefundHardGrader(BaseTaskGrader):
                 f"Set {security_expectation.ticket_id} category to security_account_takeover"
             )
 
-        if security_ticket.current_priority == security_expectation.priority:
-            components["security_priority"] = 0.10
-            satisfied.append("Marked security ticket urgent")
-        else:
-            outstanding.append(f"Set {security_expectation.ticket_id} priority to urgent")
+        _score_priorities(
+            ticket=security_ticket,
+            expectation=security_expectation,
+            total_weight=0.10,
+            components=components,
+            satisfied=satisfied,
+            outstanding=outstanding,
+            component_prefix="security",
+            queue_success="Marked security queue priority urgent",
+            department_success="Marked trust_safety internal priority urgent",
+        )
 
         if security_ticket.assigned_team == security_expectation.team:
             components["security_team"] = 0.10
@@ -642,11 +838,19 @@ class SecurityAndRefundHardGrader(BaseTaskGrader):
                 f"Set {billing_expectation.ticket_id} category to billing_refund"
             )
 
-        if billing_ticket.current_priority == billing_expectation.priority:
-            components["billing_priority"] = 0.05
-            satisfied.append("Marked refund ticket medium priority")
-        else:
-            outstanding.append(f"Set {billing_expectation.ticket_id} priority to medium")
+        _score_priorities(
+            ticket=billing_ticket,
+            expectation=billing_expectation,
+            total_weight=0.05,
+            components=components,
+            satisfied=satisfied,
+            outstanding=outstanding,
+            component_prefix="billing",
+            queue_success="Marked refund queue priority medium",
+            department_success=(
+                f"Marked billing_ops internal priority {billing_expectation.department_priority.value}"
+            ),
+        )
 
         if billing_ticket.assigned_team == billing_expectation.team:
             components["billing_team"] = 0.05
@@ -721,11 +925,18 @@ class EnterpriseRefundInvestigationGrader(BaseTaskGrader):
         else:
             outstanding.append(_require_category(expectation))
 
-        if ticket.current_priority == expectation.priority:
-            components["correct_priority"] = 0.10
-            satisfied.append("Marked the case high priority")
-        else:
-            outstanding.append(_require_priority(expectation))
+        _score_priorities(
+            ticket=ticket,
+            expectation=expectation,
+            total_weight=0.10,
+            components=components,
+            satisfied=satisfied,
+            outstanding=outstanding,
+            queue_success=f"Marked queue priority {expectation.priority.value}",
+            department_success=(
+                f"Marked {expectation.team.value} internal priority {expectation.department_priority.value}"
+            ),
+        )
 
         if ticket.assigned_team == expectation.team:
             components["correct_team"] = 0.10
@@ -804,11 +1015,18 @@ class IncidentCoordinationOutageGrader(BaseTaskGrader):
         else:
             outstanding.append(_require_category(expectation))
 
-        if ticket.current_priority == expectation.priority:
-            components["correct_priority"] = 0.08
-            satisfied.append("Marked outage high priority")
-        else:
-            outstanding.append(_require_priority(expectation))
+        _score_priorities(
+            ticket=ticket,
+            expectation=expectation,
+            total_weight=0.08,
+            components=components,
+            satisfied=satisfied,
+            outstanding=outstanding,
+            queue_success=f"Marked queue priority {expectation.priority.value}",
+            department_success=(
+                f"Marked {expectation.team.value} internal priority {expectation.department_priority.value}"
+            ),
+        )
 
         if ticket.assigned_team == expectation.team:
             components["correct_team"] = 0.08
@@ -909,11 +1127,18 @@ class ExecutiveSecurityEscalationGrader(BaseTaskGrader):
         else:
             outstanding.append(_require_category(expectation))
 
-        if security_ticket.current_priority == expectation.priority:
-            components["correct_priority"] = 0.10
-            satisfied.append("Marked the security case urgent")
-        else:
-            outstanding.append(_require_priority(expectation))
+        _score_priorities(
+            ticket=security_ticket,
+            expectation=expectation,
+            total_weight=0.10,
+            components=components,
+            satisfied=satisfied,
+            outstanding=outstanding,
+            queue_success=f"Marked queue priority {expectation.priority.value}",
+            department_success=(
+                f"Marked {expectation.team.value} internal priority {expectation.department_priority.value}"
+            ),
+        )
 
         if security_ticket.assigned_team == expectation.team:
             components["correct_team"] = 0.10
@@ -994,10 +1219,18 @@ class EscalationRejectionRecoveryGrader(BaseTaskGrader):
         else:
             outstanding.append(_require_category(expectation))
 
-        if ticket.current_priority == expectation.priority:
-            components["correct_priority"] = 0.08
-        else:
-            outstanding.append(_require_priority(expectation))
+        _score_priorities(
+            ticket=ticket,
+            expectation=expectation,
+            total_weight=0.08,
+            components=components,
+            satisfied=satisfied,
+            outstanding=outstanding,
+            queue_success=f"Marked queue priority {expectation.priority.value}",
+            department_success=(
+                f"Marked {expectation.team.value} internal priority {expectation.department_priority.value}"
+            ),
+        )
 
         if ticket.assigned_team == expectation.team:
             components["correct_team"] = 0.08
@@ -1081,10 +1314,18 @@ class RefundReopenReviewGrader(BaseTaskGrader):
         else:
             outstanding.append(_require_category(expectation))
 
-        if ticket.current_priority == expectation.priority:
-            components["correct_priority"] = 0.08
-        else:
-            outstanding.append(_require_priority(expectation))
+        _score_priorities(
+            ticket=ticket,
+            expectation=expectation,
+            total_weight=0.08,
+            components=components,
+            satisfied=satisfied,
+            outstanding=outstanding,
+            queue_success=f"Marked queue priority {expectation.priority.value}",
+            department_success=(
+                f"Marked {expectation.team.value} internal priority {expectation.department_priority.value}"
+            ),
+        )
 
         if ticket.assigned_team == expectation.team:
             components["correct_team"] = 0.08
@@ -1292,10 +1533,18 @@ class FollowupReprioritizationQueueGrader(BaseTaskGrader):
         else:
             outstanding.append(_require_category(expectation))
 
-        if ticket.current_priority == expectation.priority:
-            components["correct_priority"] = 0.08
-        else:
-            outstanding.append(_require_priority(expectation))
+        _score_priorities(
+            ticket=ticket,
+            expectation=expectation,
+            total_weight=0.08,
+            components=components,
+            satisfied=satisfied,
+            outstanding=outstanding,
+            queue_success=f"Marked queue priority {expectation.priority.value}",
+            department_success=(
+                f"Marked {expectation.team.value} internal priority {expectation.department_priority.value}"
+            ),
+        )
 
         if ticket.assigned_team == expectation.team:
             components["correct_team"] = 0.08

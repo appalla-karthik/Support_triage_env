@@ -34,7 +34,7 @@ from support_triage_env.models import (
     TicketTeam,
 )
 from support_triage_env.simulator import SupportTriageSimulator
-from support_triage_env.tasks import task_ids
+from support_triage_env.tasks import derive_department_priority, task_ids
 from support_triage_env.training_data import (
     DEFAULT_HARD_TASK_IDS,
     _repo_dataset_file,
@@ -83,19 +83,23 @@ def _find_ticket(state_payload: dict, ticket_id: str) -> dict | None:
     return None
 
 
-def _route_for_label(label: str, ticket: dict) -> tuple[str, str, str]:
+def _route_for_label(label: str, ticket: dict) -> tuple[str, str, str, str]:
     tag_text = " ".join(ticket.get("tags") or []).lower()
     tier = (ticket.get("customer_tier") or "").lower()
     if label == TicketCategory.SECURITY_ESCALATION.value:
+        queue_priority = TicketPriority.URGENT.value
         return (
             TicketCategory.SECURITY_ESCALATION.value,
-            TicketPriority.URGENT.value,
+            queue_priority,
+            derive_department_priority(ticket, queue_priority, TicketCategory.SECURITY_ESCALATION.value, TicketTeam.TRUST_SAFETY.value).value,
             TicketTeam.TRUST_SAFETY.value,
         )
     if label == TicketCategory.SECURITY_ACCOUNT_TAKEOVER.value:
+        queue_priority = TicketPriority.URGENT.value
         return (
             TicketCategory.SECURITY_ACCOUNT_TAKEOVER.value,
-            TicketPriority.URGENT.value,
+            queue_priority,
+            derive_department_priority(ticket, queue_priority, TicketCategory.SECURITY_ACCOUNT_TAKEOVER.value, TicketTeam.TRUST_SAFETY.value).value,
             TicketTeam.TRUST_SAFETY.value,
         )
     if label == TicketCategory.INCIDENT_COORDINATION.value:
@@ -103,15 +107,23 @@ def _route_for_label(label: str, ticket: dict) -> tuple[str, str, str]:
         return (
             TicketCategory.INCIDENT_COORDINATION.value,
             priority,
+            derive_department_priority(ticket, priority, TicketCategory.INCIDENT_COORDINATION.value, TicketTeam.ENGINEERING.value).value,
             TicketTeam.ENGINEERING.value,
         )
     if label == TicketCategory.PRODUCT_BUG.value:
         priority = TicketPriority.URGENT.value if "critical" in tag_text else TicketPriority.HIGH.value
-        return (TicketCategory.PRODUCT_BUG.value, priority, TicketTeam.ENGINEERING.value)
+        return (
+            TicketCategory.PRODUCT_BUG.value,
+            priority,
+            derive_department_priority(ticket, priority, TicketCategory.PRODUCT_BUG.value, TicketTeam.ENGINEERING.value).value,
+            TicketTeam.ENGINEERING.value,
+        )
     if label == TicketCategory.BILLING_APPROVAL.value:
+        queue_priority = TicketPriority.HIGH.value
         return (
             TicketCategory.BILLING_APPROVAL.value,
-            TicketPriority.HIGH.value,
+            queue_priority,
+            derive_department_priority(ticket, queue_priority, TicketCategory.BILLING_APPROVAL.value, TicketTeam.BILLING_OPS.value).value,
             TicketTeam.BILLING_OPS.value,
         )
     if label == TicketCategory.BILLING_REFUND.value:
@@ -120,10 +132,17 @@ def _route_for_label(label: str, ticket: dict) -> tuple[str, str, str]:
             if tier == "enterprise" or any(tag in tag_text for tag in ["vip", "month-end", "reopen-risk"])
             else TicketPriority.MEDIUM.value
         )
-        return (TicketCategory.BILLING_REFUND.value, priority, TicketTeam.BILLING_OPS.value)
+        return (
+            TicketCategory.BILLING_REFUND.value,
+            priority,
+            derive_department_priority(ticket, priority, TicketCategory.BILLING_REFUND.value, TicketTeam.BILLING_OPS.value).value,
+            TicketTeam.BILLING_OPS.value,
+        )
+    queue_priority = TicketPriority.MEDIUM.value
     return (
         TicketCategory.ACCOUNT_ACCESS.value,
-        TicketPriority.MEDIUM.value,
+        queue_priority,
+        derive_department_priority(ticket, queue_priority, TicketCategory.ACCOUNT_ACCESS.value, TicketTeam.CUSTOMER_SUPPORT.value).value,
         TicketTeam.CUSTOMER_SUPPORT.value,
     )
 
@@ -243,6 +262,15 @@ def _task_specific_action(task_id: str, ticket: dict, state_payload: dict) -> Su
                 message=query,
             )
 
+    if task_id == "export_outage_medium" or ("outage" in tags and "incident-follow-up" not in tags and "incident" not in tags):
+        if not _has_action(state_payload, ActionType.SEARCH_POLICY.value, ticket_id):
+            return SupportTriageAction(
+                action_type=ActionType.SEARCH_POLICY,
+                ticket_id=ticket_id,
+                app=EnterpriseApp.POLICY_HUB,
+                message="product outage escalation checklist",
+            )
+
     if task_id in {"incident_coordination_outage", "escalation_rejection_recovery"} or "incident" in tags or "incident-follow-up" in tags:
         if not _has_action(state_payload, ActionType.LOOKUP_ACCOUNT.value, ticket_id):
             return SupportTriageAction(
@@ -266,6 +294,15 @@ def _task_specific_action(task_id: str, ticket: dict, state_payload: dict) -> Su
                 team=TicketTeam.ENGINEERING,
                 severity=IncidentSeverity.HIGH,
                 message=f"Incident created for {ticket_id}: {ticket['subject']}",
+            )
+
+    if task_id == "security_and_refund_hard" and "security" in tags:
+        if not _has_action(state_payload, ActionType.SEARCH_POLICY.value, ticket_id):
+            return SupportTriageAction(
+                action_type=ActionType.SEARCH_POLICY,
+                ticket_id=ticket_id,
+                app=EnterpriseApp.POLICY_HUB,
+                message="account takeover response policy",
             )
 
     if task_id in {"executive_security_escalation"} or "trust" in tags or "executive" in tags:
@@ -390,17 +427,19 @@ def _build_policy_action(
 
         if use_hybrid_workflow and task_id in hard_workflow_tasks:
             defaults = _task_ticket_defaults(task_id, ticket)
-            category, priority, team = (
+            category, priority, department_priority, team = (
                 defaults["category"],
                 defaults["priority"],
+                defaults["department_priority"],
                 defaults["team"],
             )
         else:
-            category, priority, team = _route_for_label(predicted_label, ticket)
+            category, priority, department_priority, team = _route_for_label(predicted_label, ticket)
 
         if (
             ticket.get("current_category") != category
             or ticket.get("current_priority") != priority
+            or ticket.get("current_department_priority") != department_priority
             or ticket.get("assigned_team") != team
         ):
             action = SupportTriageAction(
@@ -408,6 +447,7 @@ def _build_policy_action(
                 ticket_id=ticket["ticket_id"],
                 category=TicketCategory(category),
                 priority=TicketPriority(priority),
+                department_priority=TicketPriority(department_priority),
                 team=TicketTeam(team),
             )
             if use_hybrid_workflow:

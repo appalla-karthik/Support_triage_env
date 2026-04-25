@@ -30,6 +30,7 @@ class TicketExpectation(BaseModel):
     ticket_id: str
     category: TicketCategory
     priority: TicketPriority
+    department_priority: TicketPriority | None = None
     team: TicketTeam
     terminal_status: str
     resolution_code: ResolutionCode | None = None
@@ -68,6 +69,113 @@ TASK_IDS = [
 
 def task_ids() -> list[str]:
     return list(TASK_IDS)
+
+
+_PRIORITY_LEVELS: dict[TicketPriority, int] = {
+    TicketPriority.LOW: 0,
+    TicketPriority.MEDIUM: 1,
+    TicketPriority.HIGH: 2,
+    TicketPriority.URGENT: 3,
+}
+
+
+def _coerce_priority(value: TicketPriority | str) -> TicketPriority:
+    return value if isinstance(value, TicketPriority) else TicketPriority(value)
+
+
+def _coerce_category(value: TicketCategory | str) -> TicketCategory:
+    return value if isinstance(value, TicketCategory) else TicketCategory(value)
+
+
+def _coerce_team(value: TicketTeam | str) -> TicketTeam:
+    return value if isinstance(value, TicketTeam) else TicketTeam(value)
+
+
+def _priority_from_level(level: int) -> TicketPriority:
+    bounded = max(0, min(3, level))
+    for priority, priority_level in _PRIORITY_LEVELS.items():
+        if priority_level == bounded:
+            return priority
+    return TicketPriority.MEDIUM
+
+
+def derive_department_priority(
+    ticket: TicketRecord | dict,
+    queue_priority: TicketPriority | str,
+    category: TicketCategory | str,
+    team: TicketTeam | str,
+) -> TicketPriority:
+    queue_priority = _coerce_priority(queue_priority)
+    category = _coerce_category(category)
+    team = _coerce_team(team)
+
+    if isinstance(ticket, TicketRecord):
+        tags = set(ticket.tags)
+        sla_hours_remaining = ticket.sla_hours_remaining
+        customer_tier = ticket.customer_tier.lower()
+        subject = ticket.subject.lower()
+        messages = " ".join(message.content for message in ticket.messages).lower()
+    else:
+        tags = set(ticket.get("tags") or [])
+        sla_hours_remaining = ticket.get("sla_hours_remaining")
+        customer_tier = (ticket.get("customer_tier") or "").lower()
+        subject = (ticket.get("subject") or "").lower()
+        messages = " ".join(
+            message.get("content", "")
+            for message in ticket.get("messages", [])
+            if isinstance(message, dict)
+        ).lower()
+
+    combined_text = f"{subject} {messages}"
+    level = _PRIORITY_LEVELS[queue_priority]
+    has_business_impact = (
+        customer_tier == "enterprise"
+        or any(tag in tags for tag in {"vip", "month-end", "policy-review", "reopen-risk"})
+        or any(
+            phrase in combined_text
+            for phrase in {"finance close", "quarter-end", "quarter end", "board reporting", "leadership reporting", "blocked"}
+        )
+    )
+    near_breach = sla_hours_remaining is not None and sla_hours_remaining <= 4
+
+    if team == TicketTeam.TRUST_SAFETY:
+        level = max(level, 3 if near_breach or "executive" in tags or category == TicketCategory.SECURITY_ESCALATION else 2)
+    elif team == TicketTeam.ENGINEERING:
+        if near_breach or any(tag in tags for tag in {"incident", "incident-follow-up", "outage", "critical"}):
+            level = max(level, 3)
+        elif has_business_impact:
+            level = max(level, 2)
+    elif team == TicketTeam.BILLING_OPS:
+        if any(tag in tags for tag in {"vip", "month-end", "reopen-risk", "policy-review"}):
+            level = max(level, 2)
+        if near_breach and has_business_impact:
+            level = max(level, 3)
+        elif has_business_impact:
+            level = max(level, 2)
+    else:
+        if customer_tier == "standard" and (sla_hours_remaining or 999) >= 24:
+            level = min(level, 0)
+
+    return _priority_from_level(level)
+
+
+def _apply_department_priorities(scenario: TaskScenario) -> TaskScenario:
+    ticket_lookup = {ticket.ticket_id: ticket for ticket in scenario.tickets}
+    expectations: dict[str, TicketExpectation] = {}
+    for ticket_id, expectation in scenario.expectations.items():
+        if expectation.department_priority is None:
+            expectation = expectation.model_copy(
+                update={
+                    "department_priority": derive_department_priority(
+                        ticket_lookup[ticket_id],
+                        expectation.priority,
+                        expectation.category,
+                        expectation.team,
+                    )
+                }
+            )
+        expectations[ticket_id] = expectation
+    return scenario.model_copy(update={"expectations": expectations})
 
 
 def _ticket_id(rng: random.Random) -> str:
@@ -1595,24 +1703,26 @@ def _followup_reprioritization_queue_scenario(rng: random.Random) -> TaskScenari
 
 def build_task_scenario(task_id: str, rng: random.Random) -> TaskScenario:
     if task_id == "billing_refund_easy":
-        return _billing_refund_scenario(rng)
-    if task_id == "export_outage_medium":
-        return _export_outage_scenario(rng)
-    if task_id == "security_and_refund_hard":
-        return _security_and_refund_scenario(rng)
-    if task_id == "enterprise_refund_investigation":
-        return _enterprise_refund_investigation_scenario(rng)
-    if task_id == "incident_coordination_outage":
-        return _incident_coordination_outage_scenario(rng)
-    if task_id == "executive_security_escalation":
-        return _executive_security_escalation_scenario(rng)
-    if task_id == "escalation_rejection_recovery":
-        return _escalation_rejection_recovery_scenario(rng)
-    if task_id == "refund_reopen_review":
-        return _refund_reopen_review_scenario(rng)
-    if task_id == "mixed_queue_command_center":
-        return _mixed_queue_command_center_scenario(rng)
-    if task_id == "followup_reprioritization_queue":
-        return _followup_reprioritization_queue_scenario(rng)
-    raise ValueError(f"Unknown task_id '{task_id}'")
+        scenario = _billing_refund_scenario(rng)
+    elif task_id == "export_outage_medium":
+        scenario = _export_outage_scenario(rng)
+    elif task_id == "security_and_refund_hard":
+        scenario = _security_and_refund_scenario(rng)
+    elif task_id == "enterprise_refund_investigation":
+        scenario = _enterprise_refund_investigation_scenario(rng)
+    elif task_id == "incident_coordination_outage":
+        scenario = _incident_coordination_outage_scenario(rng)
+    elif task_id == "executive_security_escalation":
+        scenario = _executive_security_escalation_scenario(rng)
+    elif task_id == "escalation_rejection_recovery":
+        scenario = _escalation_rejection_recovery_scenario(rng)
+    elif task_id == "refund_reopen_review":
+        scenario = _refund_reopen_review_scenario(rng)
+    elif task_id == "mixed_queue_command_center":
+        scenario = _mixed_queue_command_center_scenario(rng)
+    elif task_id == "followup_reprioritization_queue":
+        scenario = _followup_reprioritization_queue_scenario(rng)
+    else:
+        raise ValueError(f"Unknown task_id '{task_id}'")
+    return _apply_department_priorities(scenario)
 

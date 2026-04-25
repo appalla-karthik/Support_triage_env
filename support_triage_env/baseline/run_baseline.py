@@ -29,6 +29,7 @@ def build_prompt(observation: dict[str, Any], state: dict[str, Any]) -> str:
         '"ticket_id":"optional string or null",'
         '"category":"optional enum or null",'
         '"priority":"optional enum or null",'
+        '"department_priority":"optional enum or null",'
         '"team":"optional enum or null",'
         '"app":"optional enum or null",'
         '"target_id":"optional string or null",'
@@ -39,7 +40,7 @@ def build_prompt(observation: dict[str, Any], state: dict[str, Any]) -> str:
         "}\n"
         "Allowed categories: billing_refund, billing_approval, product_bug, incident_coordination, security_account_takeover, security_escalation, account_access.\n"
         "Allowed apps: ticketing_console, crm_workspace, billing_system, incident_tracker, trust_safety_console, policy_hub.\n"
-        "Allowed priorities: low, medium, high, urgent. Allowed teams: billing_ops, engineering, trust_safety, customer_support.\n"
+        "Allowed priorities: low, medium, high, urgent. `priority` is the global support-queue priority and `department_priority` is the internal priority after routing. Allowed teams: billing_ops, engineering, trust_safety, customer_support.\n"
         "Choose exactly one next action. Do not wrap the JSON in markdown.\n\n"
         f"Observation:\n{json.dumps(observation, indent=2)}\n\n"
         f"State:\n{json.dumps(state, indent=2)}\n"

@@ -74,6 +74,110 @@ def test_medium_task_penalizes_premature_resolution():
     assert "premature_resolution" in env.state().progress.penalties
 
 
+def test_high_risk_resolution_without_tool_evidence_triggers_confidence_penalty():
+    env = SupportTriageSimulator()
+    env.reset(task_id="enterprise_refund_investigation", seed=7)
+    ticket_id = env.state().tickets[0].ticket_id
+
+    env.step(
+        SupportTriageAction(
+            action_type=ActionType.CLASSIFY_TICKET,
+            ticket_id=ticket_id,
+            category=TicketCategory.BILLING_APPROVAL,
+            priority=TicketPriority.HIGH,
+            team=TicketTeam.BILLING_OPS,
+        )
+    )
+    env.step(
+        SupportTriageAction(
+            action_type=ActionType.DRAFT_REPLY,
+            ticket_id=ticket_id,
+            message="Sorry for the billing issue. We are reviewing the refund and will update you shortly.",
+        )
+    )
+    env.step(
+        SupportTriageAction(
+            action_type=ActionType.RESOLVE_TICKET,
+            ticket_id=ticket_id,
+            resolution_code=ResolutionCode.REFUND_SUBMITTED,
+        )
+    )
+
+    assert env.state().progress.penalties.get("confidence_failure_resolution", 0.0) >= 0.12
+
+
+def test_escalation_without_policy_evidence_triggers_confidence_penalty():
+    env = SupportTriageSimulator()
+    env.reset(task_id="executive_security_escalation", seed=7)
+    ticket_id = env.state().tickets[0].ticket_id
+
+    env.step(
+        SupportTriageAction(
+            action_type=ActionType.CLASSIFY_TICKET,
+            ticket_id=ticket_id,
+            category=TicketCategory.SECURITY_ACCOUNT_TAKEOVER,
+            priority=TicketPriority.URGENT,
+            team=TicketTeam.TRUST_SAFETY,
+        )
+    )
+    env.step(
+        SupportTriageAction(
+            action_type=ActionType.DRAFT_REPLY,
+            ticket_id=ticket_id,
+            message="I have escalated this to our security specialists. Please do not share passwords or codes.",
+        )
+    )
+    env.step(
+        SupportTriageAction(
+            action_type=ActionType.ESCALATE_TICKET,
+            ticket_id=ticket_id,
+            team=TicketTeam.TRUST_SAFETY,
+            message="Escalating without first checking the current security policy.",
+        )
+    )
+
+    assert env.state().progress.penalties.get("confidence_failure_escalation", 0.0) >= 0.10
+
+
+def test_urgent_priority_without_supporting_evidence_triggers_confidence_penalty():
+    env = SupportTriageSimulator()
+    env.reset(task_id="billing_refund_easy", seed=7)
+    ticket_id = env.state().tickets[0].ticket_id
+
+    env.step(
+        SupportTriageAction(
+            action_type=ActionType.CLASSIFY_TICKET,
+            ticket_id=ticket_id,
+            category=TicketCategory.BILLING_REFUND,
+            priority=TicketPriority.URGENT,
+            team=TicketTeam.BILLING_OPS,
+        )
+    )
+
+    assert env.state().progress.penalties.get("confidence_failure_urgent_priority", 0.0) >= 0.10
+
+
+def test_classify_ticket_records_queue_and_department_priorities():
+    env = SupportTriageSimulator()
+    env.reset(task_id="export_outage_medium", seed=7)
+    ticket_id = env.state().tickets[0].ticket_id
+
+    env.step(
+        SupportTriageAction(
+            action_type=ActionType.CLASSIFY_TICKET,
+            ticket_id=ticket_id,
+            category=TicketCategory.PRODUCT_BUG,
+            priority=TicketPriority.HIGH,
+            department_priority=TicketPriority.URGENT,
+            team=TicketTeam.ENGINEERING,
+        )
+    )
+
+    ticket = env.state().tickets[0]
+    assert ticket.current_priority == TicketPriority.HIGH
+    assert ticket.current_department_priority == TicketPriority.URGENT
+
+
 def test_hard_task_requires_urgent_ticket_first():
     env = SupportTriageSimulator()
     env.reset(task_id="security_and_refund_hard")

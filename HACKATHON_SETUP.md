@@ -57,6 +57,60 @@ python -m support_triage_env.baseline.run_baseline `
   --output outputs/baseline_scores.json
 ```
 
+## Recommended Hugging Face Final Run
+
+After the local report and balanced SFT dataset are ready, the cleanest final run path is:
+
+1. Upload the balanced SFT dataset to a Hugging Face dataset repo.
+2. Launch the script-based Unsloth run on Hugging Face Jobs.
+3. Save the final adapter and plots, then link them from the README.
+
+### Prepare the balanced dataset locally
+
+Expected final SFT file:
+
+- `outputs/synthetic_trajectory_sft_30k_balanced.jsonl`
+
+### Upload the dataset to Hugging Face
+
+```bash
+hf auth login
+hf repo create <your-username>/support-triage-sft --type dataset
+hf upload <your-username>/support-triage-sft outputs/synthetic_trajectory_sft_30k_balanced.jsonl data/train.jsonl
+```
+
+### Launch the full run with Hugging Face Jobs
+
+`train_unsloth_sft.py` is included in the repo for this purpose.
+
+```bash
+hf jobs uv run ^
+  --flavor t4-medium ^
+  --timeout 4h ^
+  --secrets HF_TOKEN ^
+  --with unsloth ^
+  --with trl ^
+  --with datasets ^
+  --with accelerate ^
+  --with bitsandbytes ^
+  train_unsloth_sft.py ^
+  --dataset-repo <your-username>/support-triage-sft ^
+  --output-repo <your-username>/support-triage-3b-sft ^
+  --output-dir outputs/unsloth_full_run_3b ^
+  --max-steps 300
+```
+
+### Local smoke run of the same script
+
+```bash
+python train_unsloth_sft.py ^
+  --dataset-path outputs/synthetic_trajectory_sft_30k_balanced.jsonl ^
+  --output-dir outputs/unsloth_full_run_3b_local ^
+  --train-limit 2000 ^
+  --eval-limit 200 ^
+  --max-steps 60
+```
+
 ## Artifact Contract
 
 The following files should exist before final submission:

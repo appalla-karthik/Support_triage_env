@@ -41,6 +41,7 @@ def scenario_to_examples(scenario_seed: int, scenario: Any) -> list[dict[str, An
                 "expected": {
                     "category": expectation.category.value,
                     "priority": expectation.priority.value,
+                    "department_priority": expectation.department_priority.value,
                     "team": expectation.team.value,
                     "terminal_status": expectation.terminal_status,
                     "resolution_code": (

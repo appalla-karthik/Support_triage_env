@@ -20,7 +20,11 @@ app = create_app(
     max_concurrent_envs=8,
 )
 
-PROJECT_DOCS_BUILD_DIR = Path(__file__).resolve().parent.parent / "documentation-customer_support" / "build"
+PROJECT_DOCS_BUILD_DIR = (
+    Path(__file__).resolve().parent.parent
+    / "documentation_openenv_customer.support"
+    / "build"
+)
 
 if PROJECT_DOCS_BUILD_DIR.exists():
     app.mount(
@@ -57,19 +61,20 @@ async def root() -> str:
         --line-strong: rgba(162, 180, 212, 0.2);
         --success: #31d0aa;
         --warning: #ffb648;
-        --shadow: 0 28px 80px rgba(0, 0, 0, 0.52);
-        --shadow-soft: 0 12px 30px rgba(0, 0, 0, 0.3);
+        --shadow: 0 14px 34px rgba(0, 0, 0, 0.28);
+        --shadow-soft: 0 8px 18px rgba(0, 0, 0, 0.18);
       }
       * { box-sizing: border-box; }
+      html {
+        scroll-behavior: auto;
+      }
       body {
         margin: 0;
         font-family: "Segoe UI Variable", "Segoe UI", "Inter", sans-serif;
         background:
-          radial-gradient(circle at top left, rgba(125, 140, 255, 0.14), transparent 28%),
-          radial-gradient(circle at bottom right, rgba(56, 214, 255, 0.1), transparent 26%),
+          radial-gradient(circle at top left, rgba(125, 140, 255, 0.08), transparent 26%),
           linear-gradient(180deg, #090b10 0%, #0e1219 100%);
         color: var(--ink);
-        transition: background 180ms ease, color 180ms ease;
       }
       main {
         max-width: 1680px;
@@ -96,9 +101,8 @@ async def root() -> str:
         padding: 18px 12px;
         border-radius: 28px;
         border: 1px solid var(--line);
-        background: linear-gradient(180deg, rgba(8, 10, 16, 0.98), rgba(13, 17, 26, 0.96));
+        background: rgba(11, 15, 22, 0.98);
         box-shadow: var(--shadow-soft);
-        transition: width 180ms ease, padding 180ms ease, border-color 180ms ease, background 180ms ease;
       }
       body.sidebar-expanded .nav-rail {
         align-items: stretch;
@@ -134,17 +138,16 @@ async def root() -> str:
         font-size: 14px;
         font-weight: 800;
         letter-spacing: 0.08em;
-        box-shadow: 0 10px 24px rgba(100, 116, 255, 0.35);
+        box-shadow: 0 6px 14px rgba(100, 116, 255, 0.22);
       }
       .rail-toggle {
         border: 1px solid transparent;
         background: rgba(255, 255, 255, 0.03);
         color: var(--muted-strong);
         cursor: pointer;
-        transition: transform 120ms ease, background 120ms ease, border-color 120ms ease, color 120ms ease;
+        transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
       }
       .rail-toggle:hover {
-        transform: translateY(-1px);
         background: rgba(255, 255, 255, 0.07);
         border-color: rgba(125, 140, 255, 0.24);
         color: #ffffff;
@@ -168,10 +171,7 @@ async def root() -> str:
         font-size: 12px;
         font-weight: 700;
         letter-spacing: 0.06em;
-        transition: transform 120ms ease, background 120ms ease, border-color 120ms ease, color 120ms ease;
-      }
-      .rail-link:hover {
-        transform: translateY(-1px);
+        transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
       }
       .rail-link.active,
       .rail-link:hover {
@@ -228,7 +228,7 @@ async def root() -> str:
       }
       .shell {
         position: relative;
-        background: linear-gradient(180deg, rgba(9, 12, 18, 0.98), rgba(13, 17, 26, 0.98));
+        background: linear-gradient(180deg, rgba(9, 12, 18, 0.99), rgba(12, 16, 24, 0.99));
         border: 1px solid rgba(255, 255, 255, 0.08);
         border-radius: 30px;
         box-shadow: var(--shadow);
@@ -247,9 +247,7 @@ async def root() -> str:
         gap: 24px;
         padding: 28px 28px 24px;
         border-bottom: 1px solid var(--line);
-        background:
-          radial-gradient(circle at top right, rgba(125, 140, 255, 0.12), transparent 28%),
-          linear-gradient(180deg, rgba(14, 18, 27, 0.98), rgba(9, 12, 18, 0.96));
+        background: linear-gradient(180deg, rgba(14, 18, 27, 0.98), rgba(9, 12, 18, 0.96));
       }
       .hero-copy {
         display: grid;
@@ -993,6 +991,164 @@ async def root() -> str:
         gap: 16px;
         margin-top: 16px;
       }
+      .decision-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.62fr) minmax(300px, 0.64fr);
+        gap: 16px;
+        margin: 16px 0 0;
+      }
+      .decision-stack {
+        display: grid;
+        gap: 16px;
+      }
+      .decision-card {
+        border: 1px solid var(--line);
+        border-radius: 22px;
+        padding: 18px;
+      }
+      .decision-card h3 {
+        margin: 8px 0 8px;
+        font-size: 24px;
+      }
+      .decision-card p {
+        margin: 0;
+        line-height: 1.65;
+      }
+      .decision-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 14px;
+      }
+      .decision-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 34px;
+        padding: 0 12px;
+        border-radius: 999px;
+        border: 1px solid rgba(162, 180, 212, 0.14);
+        background: rgba(255, 255, 255, 0.05);
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--muted-strong);
+      }
+      .decision-pill.good {
+        border-color: rgba(49, 208, 170, 0.24);
+        background: rgba(49, 208, 170, 0.12);
+        color: #d8fff4;
+      }
+      .decision-pill.warn {
+        border-color: rgba(255, 182, 72, 0.26);
+        background: rgba(255, 182, 72, 0.14);
+        color: #ffe8bd;
+      }
+      .decision-pill.bad {
+        border-color: rgba(255, 112, 112, 0.24);
+        background: rgba(255, 112, 112, 0.12);
+        color: #ffd4d4;
+      }
+      .decision-body {
+        display: grid;
+        gap: 14px;
+        margin-top: 16px;
+      }
+      .decision-row {
+        border: 1px solid rgba(162, 180, 212, 0.12);
+        border-radius: 16px;
+        padding: 14px;
+        background: rgba(255, 255, 255, 0.03);
+      }
+      .decision-row strong {
+        display: block;
+        margin-bottom: 6px;
+        font-size: 12px;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+      .decision-row p {
+        color: var(--muted-strong);
+      }
+      .signal-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .signal-chip {
+        display: inline-flex;
+        align-items: center;
+        min-height: 30px;
+        padding: 0 10px;
+        border-radius: 999px;
+        border: 1px solid rgba(162, 180, 212, 0.12);
+        background: rgba(255, 255, 255, 0.04);
+        color: var(--muted-strong);
+        font-size: 12px;
+        font-weight: 600;
+      }
+      .queue-table-wrap {
+        margin-top: 16px;
+        border: 1px solid rgba(162, 180, 212, 0.12);
+        border-radius: 18px;
+        overflow: hidden;
+      }
+      .queue-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+      }
+      .queue-table th,
+      .queue-table td {
+        padding: 12px 14px;
+        text-align: left;
+        border-bottom: 1px solid rgba(162, 180, 212, 0.1);
+        vertical-align: top;
+      }
+      .queue-table th {
+        background: rgba(255, 255, 255, 0.04);
+        color: var(--muted);
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+      .queue-table tbody tr:last-child td {
+        border-bottom: none;
+      }
+      .queue-table tbody tr.is-focused {
+        background: rgba(125, 140, 255, 0.08);
+      }
+      .queue-rank {
+        display: inline-grid;
+        place-items: center;
+        width: 24px;
+        height: 24px;
+        border-radius: 999px;
+        background: rgba(125, 140, 255, 0.14);
+        color: #dce5ff;
+        font-size: 12px;
+        font-weight: 700;
+      }
+      .team-match {
+        display: inline-flex;
+        align-items: center;
+        min-height: 30px;
+        padding: 0 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 700;
+      }
+      .team-match.good {
+        background: rgba(49, 208, 170, 0.14);
+        color: #d8fff4;
+      }
+      .team-match.warn {
+        background: rgba(255, 182, 72, 0.16);
+        color: #ffe8bd;
+      }
+      .team-match.bad {
+        background: rgba(255, 112, 112, 0.14);
+        color: #ffd4d4;
+      }
       .note-card {
         border: 1px solid var(--line);
         border-radius: 18px;
@@ -1575,7 +1731,8 @@ async def root() -> str:
       .conversation-panel,
       .pill,
       .quick-code {
-        backdrop-filter: blur(12px);
+        content-visibility: auto;
+        contain-intrinsic-size: 260px;
       }
       .panel,
       .summary-card,
@@ -1584,7 +1741,7 @@ async def root() -> str:
       .json-box,
       .mini-card,
       .pill {
-        background: linear-gradient(180deg, rgba(16, 21, 32, 0.98), rgba(11, 14, 22, 0.98));
+        background: linear-gradient(180deg, rgba(16, 21, 32, 0.99), rgba(11, 14, 22, 0.99));
       }
       .panel,
       .summary-card,
@@ -1599,6 +1756,15 @@ async def root() -> str:
       }
       .status-card {
         background: linear-gradient(180deg, rgba(16, 21, 32, 0.98), rgba(11, 14, 22, 0.98));
+      }
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation: none !important;
+          transition: none !important;
+          scroll-behavior: auto !important;
+        }
       }
       .mini-card strong,
       .summary-card strong,
@@ -1776,6 +1942,7 @@ async def root() -> str:
         }
         .toolbar,
         .control-grid,
+        .decision-grid,
         .editor-grid,
         .json-grid {
           grid-template-columns: 1fr;
@@ -1783,7 +1950,8 @@ async def root() -> str:
       }
       @media (max-width: 980px) {
         .summary-grid,
-        .editor-grid {
+        .editor-grid,
+        .decision-grid {
           grid-template-columns: 1fr;
         }
         .hero-grid {
@@ -2048,6 +2216,65 @@ async def root() -> str:
                 <div class="summary-card"><strong>Session Type</strong><span>Single environment review console</span></div>
                 <div class="summary-card"><strong>Output</strong><span>Trace, world summary, tools, schema</span></div>
               </div>
+              <div class="decision-grid">
+                <section class="decision-card">
+                  <span class="section-kicker">Queue Prioritization</span>
+                  <h3>Queue Reading Surface</h3>
+                  <p id="queue-priority-summary">Reset the environment to load the support queue, ticket ordering, and routing recommendations.</p>
+                  <div class="queue-table-wrap">
+                    <table class="queue-table">
+                      <thead>
+                        <tr>
+                          <th>#</th>
+                          <th>Ticket</th>
+                          <th>Global / Team Priority</th>
+                          <th>Expected Route</th>
+                          <th>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody id="queue-priority-body">
+                        <tr><td colspan="5" style="color: var(--muted);">No queue loaded yet.</td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </section>
+                <div class="decision-stack">
+                  <section class="decision-card">
+                    <span class="section-kicker">Focused Ticket</span>
+                    <h3 id="decision-title">Decision Rationale</h3>
+                    <p id="decision-summary">The dashboard will explain why the current ticket is first, what signals were detected, and which team the agent should route it to.</p>
+                    <div class="decision-meta" id="decision-meta">
+                      <span class="decision-pill">No active ticket</span>
+                    </div>
+                    <div class="decision-body">
+                      <div class="decision-row">
+                        <strong>Detected Signals</strong>
+                        <div class="signal-list" id="decision-signals">
+                          <span class="signal-chip">Waiting for queue</span>
+                        </div>
+                      </div>
+                      <div class="decision-row">
+                        <strong>Recommended Next Action</strong>
+                        <p id="decision-next-action">Reset first to let the assistant propose a queue-aware action.</p>
+                      </div>
+                    </div>
+                  </section>
+                  <section class="decision-card">
+                    <span class="section-kicker">Routing Verification</span>
+                    <h3>Escalation Check</h3>
+                    <p id="routing-validation-summary">Expected team, chosen team, and verifier-style routing outcome will appear here.</p>
+                    <div class="decision-meta" id="routing-validation-meta">
+                      <span class="team-match warn">Pending</span>
+                    </div>
+                    <div class="decision-body">
+                      <div class="decision-row">
+                        <strong>Verification Detail</strong>
+                        <p id="routing-validation-detail">No team assignment has been made yet for the current ticket.</p>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+              </div>
               <div class="control-grid">
                 <div class="control-card">
                   <div class="helper">Task Family</div>
@@ -2083,11 +2310,12 @@ async def root() -> str:
                     <button id="schema-btn" type="button">Refresh Schema</button>
                   </div>
                   <label for="action-json">Action JSON</label>
-                  <textarea id="action-json">{
+<textarea id="action-json">{
   "action_type": "classify_ticket",
   "ticket_id": "TCK-0000",
   "category": "billing_refund",
   "priority": "medium",
+  "department_priority": "medium",
   "team": "billing_ops"
 }</textarea>
                 </div>
@@ -2169,7 +2397,7 @@ async def root() -> str:
               <div class="link-grid">
                 <a class="link-btn" href="/metadata" target="_blank" rel="noreferrer">Metadata</a>
                 <a class="link-btn" href="/schema" target="_blank" rel="noreferrer">Schema</a>
-                <a class="link-btn" href="/project-docs" target="_blank" rel="noreferrer">Docs</a>
+                <a class="link-btn" href="/project-docs/" target="_blank" rel="noreferrer">Docs</a>
                 <a class="link-btn" href="/openapi.json" target="_blank" rel="noreferrer">OpenAPI JSON</a>
               </div>
               <div class="divider" style="margin: 16px 0;"></div>
@@ -2235,6 +2463,16 @@ GET  /schema</div>
       const resetRequiredBanner = document.getElementById("reset-required-banner");
       const stepBtn = document.getElementById("step-btn");
       const suggestedBtn = document.getElementById("fill-sample");
+      const queuePrioritySummary = document.getElementById("queue-priority-summary");
+      const queuePriorityBody = document.getElementById("queue-priority-body");
+      const decisionTitle = document.getElementById("decision-title");
+      const decisionSummary = document.getElementById("decision-summary");
+      const decisionMeta = document.getElementById("decision-meta");
+      const decisionSignals = document.getElementById("decision-signals");
+      const decisionNextAction = document.getElementById("decision-next-action");
+      const routingValidationSummary = document.getElementById("routing-validation-summary");
+      const routingValidationMeta = document.getElementById("routing-validation-meta");
+      const routingValidationDetail = document.getElementById("routing-validation-detail");
         const jsonCache = new WeakMap();
         let latestState = null;
         let latestObservation = null;
@@ -2245,6 +2483,7 @@ GET  /schema</div>
         let activeEpisodeTaskId = "";
         let followFocusedTicket = true;
         let pinnedTicketId = "";
+        const ACTIVITY_RENDER_LIMIT = 32;
 
         function pretty(data) {
           return JSON.stringify(data, null, 2);
@@ -2532,7 +2771,8 @@ GET  /schema</div>
           return;
         }
 
-        activityList.innerHTML = activityEntries.map((entry) => `
+        const visibleEntries = activityEntries.slice(0, ACTIVITY_RENDER_LIMIT);
+        activityList.innerHTML = visibleEntries.map((entry) => `
           <article class="activity-item ${entry.kind}">
             <div class="activity-step">${entry.stepLabel}</div>
             <div class="activity-body">
@@ -2708,6 +2948,7 @@ GET  /schema</div>
             status: ticket.current_status,
             category: ticket.current_category,
             priority: ticket.current_priority,
+            department_priority: ticket.current_department_priority,
             team: ticket.assigned_team,
             sla_hours_remaining: ticket.sla_hours_remaining,
             customer_sentiment: ticket.customer_sentiment,
@@ -2747,6 +2988,11 @@ GET  /schema</div>
             action_type: entry.action_type,
             ticket_id: entry.ticket_id,
             app: entry.app,
+            team: entry.team || null,
+            category: entry.category || null,
+            priority: entry.priority || null,
+            department_priority: entry.department_priority || null,
+            resolution_code: entry.resolution_code || null,
             target_id: entry.target_id,
             summary: entry.summary,
           };
@@ -2885,6 +3131,7 @@ GET  /schema</div>
         teamText.textContent = assignedTeam ? String(assignedTeam).replaceAll("_", " ") : "Unassigned";
         renderConversationPanel(observationPayload, statePayload);
         renderWorldPanels(observationPayload, statePayload);
+        renderDecisionSurfaces(statePayload);
       }
 
       async function loadMetadata() {
@@ -2917,6 +3164,7 @@ GET  /schema</div>
               ? "security_escalation"
               : "security_account_takeover",
             priority: "urgent",
+            department_priority: "urgent",
             team: "trust_safety"
           };
         }
@@ -2926,6 +3174,9 @@ GET  /schema</div>
               ? "billing_approval"
               : "billing_refund",
             priority: combined.includes("enterprise") || combined.includes("month-end") || combined.includes("vip") || combined.includes("approval")
+              ? "high"
+              : "medium",
+            department_priority: combined.includes("enterprise") || combined.includes("month-end") || tagText.includes("reopen-risk") || tagText.includes("policy-review") || tagText.includes("vip")
               ? "high"
               : "medium",
             team: "billing_ops"
@@ -2945,12 +3196,14 @@ GET  /schema</div>
               : "product_bug",
             // Some scenarios (escalation packet recovery) intentionally require urgent incident coordination.
             priority: isEscalationRecovery ? "urgent" : "high",
+            department_priority: "urgent",
             team: "engineering"
           };
         }
         return {
           category: "account_access",
           priority: "medium",
+          department_priority: "low",
           team: "customer_support"
         };
       }
@@ -2988,6 +3241,166 @@ GET  /schema</div>
           browser: browserMatch ? browserMatch[1] : "",
           time_reference: timeMatch ? timeMatch[1] : "",
         };
+      }
+
+      function prettifyValue(value) {
+        if (value == null || value === "") {
+          return "Not set";
+        }
+        return String(value).replaceAll("_", " ");
+      }
+
+      function priorityRankValue(priority) {
+        const ranks = { urgent: 0, high: 1, medium: 2, low: 3 };
+        return ranks[String(priority || "").toLowerCase()] ?? 9;
+      }
+
+      function buildPriorityReason(ticket, defaults) {
+        const reasons = [];
+        const tags = Array.isArray(ticket.tags) ? ticket.tags : [];
+        const combined = `${ticket.subject || ""} ${latestCustomerMessage(ticket)}`.toLowerCase();
+        if (defaults.priority === "urgent") reasons.push("critical risk or urgent operational impact");
+        else if (defaults.priority === "high") reasons.push("time-sensitive workflow or elevated SLA pressure");
+        if (typeof ticket.sla_hours_remaining === "number" && ticket.sla_hours_remaining <= 2) {
+          reasons.push(`SLA at ${ticket.sla_hours_remaining}h remaining`);
+        }
+        if (ticket.customer_tier && String(ticket.customer_tier).toLowerCase() !== "standard") {
+          reasons.push(`${ticket.customer_tier} customer impact`);
+        }
+        if (tags.includes("executive") || combined.includes("ceo")) reasons.push("executive account context");
+        if (tags.includes("trust") || combined.includes("mfa") || combined.includes("compromised")) reasons.push("security takeover indicators");
+        if (tags.includes("incident") || tags.includes("incident-follow-up") || combined.includes("500 error") || combined.includes("502 error")) reasons.push("outage or incident symptoms");
+        if (tags.includes("reopen-risk")) reasons.push("reopen risk requires tighter review");
+        return reasons.length ? reasons : ["baseline support triage review"];
+      }
+
+      function buildDecisionSignals(ticket, defaults) {
+        const signals = [];
+        const tags = Array.isArray(ticket.tags) ? ticket.tags : [];
+        const packet = extractReproPacket(ticket);
+        if (ticket.customer_tier) signals.push(`tier: ${ticket.customer_tier}`);
+        if (typeof ticket.sla_hours_remaining === "number") signals.push(`SLA: ${ticket.sla_hours_remaining}h`);
+        if (defaults.category) signals.push(`category: ${prettifyValue(defaults.category)}`);
+        if (defaults.priority) signals.push(`queue: ${prettifyValue(defaults.priority)}`);
+        if (defaults.department_priority) signals.push(`team: ${prettifyValue(defaults.department_priority)}`);
+        if (packet.workspace) signals.push(`workspace: ${packet.workspace}`);
+        if (packet.error_code) signals.push(`error: ${packet.error_code}`);
+        for (const tag of tags.slice(0, 5)) {
+          signals.push(`tag: ${tag}`);
+        }
+        return signals.slice(0, 8);
+      }
+
+      function latestRelevantActionForTicket(ticketId) {
+        const history = latestState && Array.isArray(latestState.action_history)
+          ? latestState.action_history
+          : [];
+        for (let index = history.length - 1; index >= 0; index -= 1) {
+          const entry = history[index];
+          if (!entry || entry.ticket_id !== ticketId) continue;
+          if (["classify_ticket", "escalate_ticket", "resolve_ticket"].includes(normalizeActionType(entry.action_type))) {
+            return entry;
+          }
+        }
+        return null;
+      }
+
+      function renderDecisionSurfaces(statePayload) {
+        const tickets = statePayload && Array.isArray(statePayload.tickets) ? statePayload.tickets : [];
+        if (!tickets.length) {
+          queuePrioritySummary.textContent = "Reset the environment to load the support queue, ticket ordering, and routing recommendations.";
+          queuePriorityBody.innerHTML = '<tr><td colspan="5" style="color: var(--muted);">No queue loaded yet.</td></tr>';
+          decisionTitle.textContent = "Decision Rationale";
+          decisionSummary.textContent = "The dashboard will explain why the current ticket is first, what signals were detected, and which team the agent should route it to.";
+          decisionMeta.innerHTML = '<span class="decision-pill">No active ticket</span>';
+          decisionSignals.innerHTML = '<span class="signal-chip">Waiting for queue</span>';
+          decisionNextAction.textContent = "Reset first to let the assistant propose a queue-aware action.";
+          routingValidationSummary.textContent = "Expected team, chosen team, and verifier-style routing outcome will appear here.";
+          routingValidationMeta.innerHTML = '<span class="team-match warn">Pending</span>';
+          routingValidationDetail.textContent = "No team assignment has been made yet for the current ticket.";
+          return;
+        }
+
+        const ordered = [...tickets]
+          .map((ticket) => ({ ticket, defaults: inferCategory(ticket) }))
+          .sort((a, b) => {
+            const workflowA = workflowRank(taskInput.value, a.ticket, a.defaults);
+            const workflowB = workflowRank(taskInput.value, b.ticket, b.defaults);
+            if (workflowA !== workflowB) return workflowA - workflowB;
+            const doneA = ["resolved", "escalated"].includes(a.ticket.current_status) ? 1 : 0;
+            const doneB = ["resolved", "escalated"].includes(b.ticket.current_status) ? 1 : 0;
+            if (doneA !== doneB) return doneA - doneB;
+            const queueDiff = priorityRankValue(a.defaults.priority) - priorityRankValue(b.defaults.priority);
+            if (queueDiff !== 0) return queueDiff;
+            return priorityRankValue(a.defaults.department_priority) - priorityRankValue(b.defaults.department_priority);
+          });
+
+        const focusedTicketId = statePayload && statePayload.focused_ticket_id ? statePayload.focused_ticket_id : null;
+        const focusedPair = ordered.find((entry) => entry.ticket.ticket_id === focusedTicketId) || ordered[0];
+        const focusedTicket = focusedPair.ticket;
+        const defaults = focusedPair.defaults;
+        const taskSpecificRecommendation = buildTaskSpecificAction(taskInput.value, focusedTicket, defaults);
+        const classificationRequired =
+          focusedTicket.current_category !== defaults.category ||
+          focusedTicket.current_priority !== defaults.priority ||
+          focusedTicket.current_department_priority !== defaults.department_priority ||
+          focusedTicket.assigned_team !== defaults.team;
+        const recommendedAction = taskSpecificRecommendation || (
+          classificationRequired ? {
+            action_type: "classify_ticket",
+            ticket_id: focusedTicket.ticket_id,
+            category: defaults.category,
+            priority: defaults.priority,
+            department_priority: defaults.department_priority,
+            team: defaults.team
+          } : {
+            action_type: defaults.team === "billing_ops" ? "resolve_ticket" : "escalate_ticket",
+            ticket_id: focusedTicket.ticket_id,
+            team: defaults.team
+          }
+        );
+
+        queuePrioritySummary.textContent = `The queue is ordered by global priority first, then department priority after routing. ${ordered[0].ticket.ticket_id} currently leads because it has the strongest risk, urgency, or SLA signal.`;
+        queuePriorityBody.innerHTML = ordered.slice(0, 6).map((entry, index) => `
+          <tr class="${entry.ticket.ticket_id === focusedTicket.ticket_id ? "is-focused" : ""}">
+            <td><span class="queue-rank">${index + 1}</span></td>
+            <td><strong>${entry.ticket.ticket_id}</strong><br /><span style="color: var(--muted);">${entry.ticket.subject || "No subject"}</span></td>
+            <td>${prettifyValue(entry.defaults.priority)} / ${prettifyValue(entry.defaults.department_priority)}</td>
+            <td>${prettifyValue(entry.defaults.team)}</td>
+            <td>${prettifyValue(entry.ticket.current_status)}</td>
+          </tr>
+        `).join("");
+
+        const reasons = buildPriorityReason(focusedTicket, defaults);
+        const signals = buildDecisionSignals(focusedTicket, defaults);
+        decisionTitle.textContent = `${focusedTicket.ticket_id} decision rationale`;
+        decisionSummary.textContent = `${focusedTicket.ticket_id} is the current focus because ${reasons[0]}. The UI shows both the queue-level priority and the department-level urgency after routing.`;
+        decisionMeta.innerHTML = `
+          <span class="decision-pill good">Queue priority: ${prettifyValue(defaults.priority)}</span>
+          <span class="decision-pill good">Department priority: ${prettifyValue(defaults.department_priority)}</span>
+          <span class="decision-pill">Expected route: ${prettifyValue(defaults.team)}</span>
+        `;
+        decisionSignals.innerHTML = signals.map((signal) => `<span class="signal-chip">${signal}</span>`).join("");
+        decisionNextAction.textContent = `${prettifyValue(recommendedAction.action_type)} is the next best move for ${focusedTicket.ticket_id}. This keeps the workflow aligned with ${prettifyValue(defaults.team)} routing and the required evidence path.`;
+
+        const lastRelevantAction = latestRelevantActionForTicket(focusedTicket.ticket_id);
+        const chosenTeam = focusedTicket.assigned_team || (lastRelevantAction && lastRelevantAction.team) || null;
+        const routeMatch = chosenTeam ? chosenTeam === defaults.team : null;
+        const verificationClass = routeMatch == null ? "warn" : routeMatch ? "good" : "bad";
+        const verificationLabel = routeMatch == null ? "Pending route" : routeMatch ? "Correct route" : "Mismatch";
+        routingValidationSummary.textContent = chosenTeam
+          ? `Expected team is ${prettifyValue(defaults.team)} and the current chosen team is ${prettifyValue(chosenTeam)}.`
+          : `Expected team is ${prettifyValue(defaults.team)}. The ticket has not been routed yet, so the verifier is still waiting.`;
+        routingValidationMeta.innerHTML = `
+          <span class="team-match ${verificationClass}">${verificationLabel}</span>
+          <span class="decision-pill">Expected: ${prettifyValue(defaults.team)}</span>
+          <span class="decision-pill">Chosen: ${prettifyValue(chosenTeam)}</span>
+        `;
+        routingValidationDetail.textContent = routeMatch == null
+          ? `Once the agent classifies or escalates ${focusedTicket.ticket_id}, this card will show whether the route matches the verifier's expected team.`
+          : routeMatch
+            ? `${focusedTicket.ticket_id} is aligned with the expected ${prettifyValue(defaults.team)} route, so this is the kind of transition that should score well during training and demo cleanly.`
+            : `${focusedTicket.ticket_id} is currently routed to ${prettifyValue(chosenTeam)} but the expected team is ${prettifyValue(defaults.team)}. In a demo, this is where you can point to a routing mismatch or escalation penalty risk.`;
       }
 
       function defaultEscalation(ticket, defaults) {
@@ -3310,12 +3723,13 @@ GET  /schema</div>
             actionInput.value = pretty(taskSpecificAction);
             return;
           }
-          if (ticket.current_category !== defaults.category || ticket.current_priority !== defaults.priority || ticket.assigned_team !== defaults.team) {
+          if (ticket.current_category !== defaults.category || ticket.current_priority !== defaults.priority || ticket.current_department_priority !== defaults.department_priority || ticket.assigned_team !== defaults.team) {
             actionInput.value = pretty({
               action_type: "classify_ticket",
               ticket_id: ticket.ticket_id,
               category: defaults.category,
               priority: defaults.priority,
+              department_priority: defaults.department_priority,
               team: defaults.team
             });
             return;
@@ -3507,6 +3921,11 @@ GET  /schema</div>
               action_type: action.action_type,
               ticket_id: action.ticket_id || null,
               app: action.app || null,
+              team: action.team || null,
+              category: action.category || null,
+              priority: action.priority || null,
+              department_priority: action.department_priority || null,
+              resolution_code: action.resolution_code || null,
               target_id: action.target_id || null,
               summary: latestObservation && latestObservation.last_action_result ? latestObservation.last_action_result : "",
             });
@@ -3538,6 +3957,7 @@ GET  /schema</div>
             ticket_id: "TCK-0000",
             category: "billing_refund",
             priority: "medium",
+            department_priority: "medium",
             team: "billing_ops"
           },
           export_outage_medium: {
@@ -3545,6 +3965,7 @@ GET  /schema</div>
             ticket_id: "TCK-0000",
             category: "product_bug",
             priority: "high",
+            department_priority: "urgent",
             team: "engineering"
           },
           security_and_refund_hard: {
@@ -3552,6 +3973,7 @@ GET  /schema</div>
             ticket_id: "TCK-0000",
             category: "security_account_takeover",
             priority: "urgent",
+            department_priority: "urgent",
             team: "trust_safety"
           },
           enterprise_refund_investigation: {
@@ -3665,7 +4087,7 @@ GET  /schema</div>
           const targetId = button.getAttribute("data-target");
           const target = targetId ? document.getElementById(targetId) : null;
           if (target) {
-            target.scrollIntoView({ behavior: "smooth", block: "start" });
+            target.scrollIntoView({ behavior: "auto", block: "start" });
           }
           menuButtons.forEach((item) => item.classList.remove("active"));
           button.classList.add("active");
@@ -3972,15 +4394,15 @@ def _render_docs_home() -> str:
   <body>
     <header class="navbar">
       <div class="navbar-inner">
-        <a class="navbar-brand" href="/project-docs">
+        <a class="navbar-brand" href="/project-docs/">
           <span class="brand-mark" aria-hidden="true"></span>
           <span>Support Triage Env</span>
         </a>
         <nav class="navbar-nav">
-          <a href="/project-docs/intro">Overview</a>
-          <a href="/project-docs/hackathon-fit">Theme Fit</a>
-          <a href="/project-docs/problem-statement">Problem Statement</a>
-          <a href="/project-docs/pivot-strategy">Pivot Strategy</a>
+          <a href="/project-docs/docs/intro">Overview</a>
+          <a href="/project-docs/docs/hackathon-fit">Theme Fit</a>
+          <a href="/project-docs/docs/problem-statement">Problem Statement</a>
+          <a href="/project-docs/docs/pivot-strategy">Pivot Strategy</a>
           <a href="/">Dashboard</a>
         </nav>
       </div>
@@ -3993,8 +4415,8 @@ def _render_docs_home() -> str:
             <h1 class="heroTitle">Support Triage Env Docs</h1>
             <p class="heroSubtitle">Detailed project documentation, evaluation logic, and hackathon positioning</p>
             <div class="buttonRow">
-              <a class="button button--primary" href="/project-docs/intro">Start with the project overview</a>
-              <a class="button button--secondary" href="/project-docs/hackathon-fit">See the best Round 2 theme fit</a>
+              <a class="button button--primary" href="/project-docs/docs/intro">Start with the project overview</a>
+              <a class="button button--secondary" href="/project-docs/docs/hackathon-fit">See the best Round 2 theme fit</a>
             </div>
           </div>
           <div class="heroPanel">
@@ -4071,8 +4493,8 @@ def _render_docs_home() -> str:
             <h2 class="calloutTitle">Pitch this as a professional support-operations world model, then extend it with longer horizons and multi-actor coordination.</h2>
           </div>
           <div class="calloutActions">
-            <a class="button button--primary" href="/project-docs/problem-statement">Read the proposed problem statement</a>
-            <a class="button button--secondary" href="/project-docs/pivot-strategy">Open the pivot roadmap</a>
+            <a class="button button--primary" href="/project-docs/docs/problem-statement">Read the proposed problem statement</a>
+            <a class="button button--secondary" href="/project-docs/docs/pivot-strategy">Open the pivot roadmap</a>
           </div>
         </div>
       </section>
@@ -4353,12 +4775,12 @@ def _render_docs_page(slug: str) -> str:
     prev_slug = DOCS_ORDER[current_index - 1] if current_index > 0 else None
     next_slug = DOCS_ORDER[current_index + 1] if current_index < len(DOCS_ORDER) - 1 else None
     prev_link = (
-        f'<a class="pager-link" href="/project-docs/{prev_slug}"><span>Previous</span><strong>{DOCS_META[prev_slug]["title"]}</strong></a>'
+        f'<a class="pager-link" href="/project-docs/docs/{prev_slug}"><span>Previous</span><strong>{DOCS_META[prev_slug]["title"]}</strong></a>'
         if prev_slug
         else ""
     )
     next_link = (
-        f'<a class="pager-link" href="/project-docs/{next_slug}"><span>Next</span><strong>{DOCS_META[next_slug]["title"]}</strong></a>'
+        f'<a class="pager-link" href="/project-docs/docs/{next_slug}"><span>Next</span><strong>{DOCS_META[next_slug]["title"]}</strong></a>'
         if next_slug
         else ""
     )
@@ -4372,7 +4794,7 @@ def _render_docs_page(slug: str) -> str:
                 continue
             active = " active" if item_slug == slug else ""
             items.append(
-                f'<a class="sidebar-link{active}" href="/project-docs/{item_slug}">{item["title"]}</a>'
+                f'<a class="sidebar-link{active}" href="/project-docs/docs/{item_slug}">{item["title"]}</a>'
             )
         if items:
             section_label = "Overview" if section == "Project" else section
@@ -4611,12 +5033,12 @@ def _render_docs_page(slug: str) -> str:
   <body>
     <header class="topbar">
       <div class="topbar-inner">
-        <a class="brand" href="/project-docs">
+        <a class="brand" href="/project-docs/">
           <span class="brand-mark" aria-hidden="true"></span>
           <span>TriageOS Docs</span>
         </a>
         <nav class="top-actions">
-          <a href="/project-docs">Docs Home</a>
+          <a href="/project-docs/">Docs Home</a>
           <a href="/docs">FastAPI Docs</a>
           <a href="/api">API Page</a>
           <a href="/">Dashboard</a>
@@ -4834,7 +5256,7 @@ async def api_landing() -> str:
           and OpenAPI JSON. This surface is designed for hackathon demos, integrations, and agent testing.
         </p>
         <div class="actions">
-          <a class="btn primary" href="/project-docs">Open Project Docs</a>
+          <a class="btn primary" href="/project-docs/">Open Project Docs</a>
           <a class="btn" href="/docs">FastAPI Interactive Docs</a>
           <a class="btn" href="/openapi.json">View OpenAPI JSON</a>
           <a class="btn" href="/metadata">Metadata</a>

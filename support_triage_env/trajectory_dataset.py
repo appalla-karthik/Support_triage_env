@@ -184,6 +184,7 @@ def _teacher_action(env: SupportTriageSimulator, observation_payload: dict[str, 
     if (
         ticket.get("current_category") != expectation.category.value
         or ticket.get("current_priority") != expectation.priority.value
+        or ticket.get("current_department_priority") != expectation.department_priority.value
         or ticket.get("assigned_team") != expectation.team.value
     ):
         return SupportTriageAction(
@@ -191,6 +192,7 @@ def _teacher_action(env: SupportTriageSimulator, observation_payload: dict[str, 
             ticket_id=ticket_id,
             category=expectation.category,
             priority=expectation.priority,
+            department_priority=expectation.department_priority,
             team=expectation.team,
         )
 

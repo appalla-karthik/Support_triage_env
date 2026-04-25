@@ -118,6 +118,7 @@ class QueueTicketView(BaseModel):
     sla_hours_remaining: int | None = None
     current_category: TicketCategory | None = None
     current_priority: TicketPriority | None = None
+    current_department_priority: TicketPriority | None = None
     assigned_team: TicketTeam | None = None
 
 
@@ -134,6 +135,7 @@ class TicketRecord(BaseModel):
     sla_hours_remaining: int | None = None
     current_category: TicketCategory | None = None
     current_priority: TicketPriority | None = None
+    current_department_priority: TicketPriority | None = None
     assigned_team: TicketTeam | None = None
     outbound_messages: list[str] = Field(default_factory=list)
     internal_notes: list[str] = Field(default_factory=list)
@@ -158,6 +160,7 @@ class TicketRecord(BaseModel):
             sla_hours_remaining=self.sla_hours_remaining,
             current_category=self.current_category,
             current_priority=self.current_priority,
+            current_department_priority=self.current_department_priority,
             assigned_team=self.assigned_team,
         )
 
@@ -284,6 +287,7 @@ class SupportTriageAction(Action):
     )
     category: TicketCategory | None = None
     priority: TicketPriority | None = None
+    department_priority: TicketPriority | None = None
     team: TicketTeam | None = None
     app: EnterpriseApp | None = None
     target_id: str | None = None

@@ -31,14 +31,14 @@ def test_scripted_policy_solves_export_outage_medium():
     score, steps = _run_scripted_task("export_outage_medium")
 
     assert score == 0.99
-    assert steps <= 4
+    assert steps <= 5
 
 
 def test_scripted_policy_solves_security_and_refund_hard():
     score, steps = _run_scripted_task("security_and_refund_hard")
 
     assert score == 0.99
-    assert steps <= 7
+    assert steps <= 8
 
 
 def test_scripted_policy_solves_enterprise_refund_investigation():

@@ -26,7 +26,12 @@ from support_triage_env.models import (
     TicketStatus,
     WorldEvent,
 )
-from support_triage_env.tasks import TaskScenario, build_task_scenario, task_ids
+from support_triage_env.tasks import (
+    TaskScenario,
+    build_task_scenario,
+    derive_department_priority,
+    task_ids,
+)
 
 
 def _join_text(items: list[str]) -> str:
@@ -202,14 +207,22 @@ class SupportTriageSimulator:
                     "classify_ticket requires category, priority, and team."
                 )
             else:
+                department_priority = action.department_priority or derive_department_priority(
+                    ticket,
+                    action.priority,
+                    action.category,
+                    action.team,
+                )
                 ticket.current_category = action.category
                 ticket.current_priority = action.priority
+                ticket.current_department_priority = department_priority
                 ticket.assigned_team = action.team
                 ticket.current_status = TicketStatus.IN_PROGRESS
                 self._state.focused_ticket_id = ticket.ticket_id
                 result_message = (
                     f"{ticket.ticket_id} classified as {action.category.value}, "
-                    f"{action.priority.value}, assigned to {action.team.value}."
+                    f"queue priority {action.priority.value}, internal priority "
+                    f"{department_priority.value}, assigned to {action.team.value}."
                 )
         elif action.action_type == ActionType.DRAFT_REPLY and ticket is not None:
             if not action.message:
