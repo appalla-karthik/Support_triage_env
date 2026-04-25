@@ -113,7 +113,19 @@ async def root() -> str:
         gap: 12px;
         justify-items: center;
       }
+      .rail-header {
+        display: grid;
+        gap: 12px;
+        width: 100%;
+        justify-items: center;
+      }
       body.sidebar-expanded .rail-top {
+        justify-items: stretch;
+      }
+      body.sidebar-expanded .rail-header {
+        grid-template-columns: minmax(0, 1fr) 52px;
+        align-items: center;
+        gap: 10px;
         justify-items: stretch;
       }
       .rail-brand,
@@ -128,9 +140,12 @@ async def root() -> str:
       }
       body.sidebar-expanded .rail-brand,
       body.sidebar-expanded .rail-link,
-      body.sidebar-expanded .rail-toggle,
       body.sidebar-expanded .rail-avatar {
         width: 100%;
+      }
+      body.sidebar-expanded .rail-toggle {
+        width: 52px;
+        height: 44px;
       }
       .rail-brand {
         background: radial-gradient(circle at 30% 30%, #9aa7ff, #6474ff 60%, #3944d0 100%);
@@ -180,12 +195,19 @@ async def root() -> str:
         color: #ffffff;
       }
       body.sidebar-expanded .rail-link,
-      body.sidebar-expanded .rail-toggle,
       body.sidebar-expanded .rail-avatar,
       body.sidebar-expanded .rail-brand {
         grid-template-columns: 28px minmax(0, 1fr);
         justify-items: start;
         padding: 0 14px;
+      }
+      body.sidebar-expanded .rail-toggle {
+        grid-template-columns: 1fr;
+        justify-items: center;
+        padding: 0;
+      }
+      body.sidebar-expanded .rail-toggle .rail-label {
+        display: none;
       }
       .rail-code,
       .rail-label,
@@ -201,6 +223,9 @@ async def root() -> str:
       body.sidebar-expanded .rail-brand-text,
       body.sidebar-expanded .rail-glyph {
         display: inline;
+      }
+      body.sidebar-expanded .rail-header .rail-label {
+        display: none;
       }
       body.sidebar-expanded .rail-code.compact-only {
         display: none;
@@ -219,6 +244,74 @@ async def root() -> str:
       }
       .rail-spacer {
         flex: 1;
+      }
+      .rail-quick {
+        display: none;
+      }
+      body.sidebar-expanded .rail-quick {
+        display: grid;
+        gap: 12px;
+        padding: 12px;
+        border-radius: 18px;
+        border: 1px solid rgba(162, 180, 212, 0.12);
+        background: rgba(255, 255, 255, 0.03);
+      }
+      .rail-quick-head strong {
+        display: block;
+        color: #f4f7fb;
+        font-size: 13px;
+        font-weight: 700;
+      }
+      .rail-quick-head span {
+        display: block;
+        margin-top: 4px;
+        color: var(--muted);
+        font-size: 11px;
+        line-height: 1.55;
+      }
+      .rail-quick-links {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+      }
+      .rail-quick-link {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 38px;
+        padding: 0 10px;
+        border-radius: 12px;
+        border: 1px solid rgba(162, 180, 212, 0.12);
+        background: rgba(255, 255, 255, 0.04);
+        color: var(--muted-strong);
+        text-decoration: none;
+        font-size: 11px;
+        font-weight: 700;
+        text-align: center;
+      }
+      .rail-quick-link:hover {
+        border-color: rgba(125, 140, 255, 0.26);
+        background: rgba(125, 140, 255, 0.1);
+        color: #ffffff;
+      }
+      .rail-quick-label {
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+      .rail-quick-code {
+        border: 1px solid rgba(162, 180, 212, 0.12);
+        border-radius: 14px;
+        padding: 10px 12px;
+        background: rgba(255, 255, 255, 0.04);
+        color: #dbe7ff;
+        font-family: Consolas, "SFMono-Regular", monospace;
+        font-size: 10.5px;
+        line-height: 1.6;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
       }
       .rail-avatar {
         background: linear-gradient(180deg, rgba(255, 95, 115, 0.24), rgba(125, 140, 255, 0.16));
@@ -992,19 +1085,32 @@ async def root() -> str:
         margin-top: 16px;
       }
       .decision-grid {
+        display: contents;
+      }
+      .runner-workspace {
         display: grid;
         grid-template-columns: minmax(0, 1.62fr) minmax(300px, 0.64fr);
         gap: 16px;
         margin: 16px 0 0;
+        align-items: start;
+      }
+      .runner-primary,
+      .runner-secondary {
+        display: grid;
+        gap: 16px;
+        align-content: start;
       }
       .decision-stack {
         display: grid;
         gap: 16px;
+        align-content: start;
       }
       .decision-card {
         border: 1px solid var(--line);
         border-radius: 22px;
         padding: 18px;
+        height: fit-content;
+        align-self: start;
       }
       .decision-card h3 {
         margin: 8px 0 8px;
@@ -1942,7 +2048,7 @@ async def root() -> str:
         }
         .toolbar,
         .control-grid,
-        .decision-grid,
+        .runner-workspace,
         .editor-grid,
         .json-grid {
           grid-template-columns: 1fr;
@@ -1951,7 +2057,7 @@ async def root() -> str:
       @media (max-width: 980px) {
         .summary-grid,
         .editor-grid,
-        .decision-grid {
+        .runner-workspace {
           grid-template-columns: 1fr;
         }
         .hero-grid {
@@ -1998,6 +2104,7 @@ async def root() -> str:
       <div class="dashboard-shell">
         <aside class="nav-rail" aria-label="Dashboard navigation">
           <div class="rail-top">
+            <div class="rail-header">
             <div class="rail-brand">
               <span class="rail-code compact-only">TS</span>
               <span class="rail-glyph">TS</span>
@@ -2008,6 +2115,7 @@ async def root() -> str:
               <span class="rail-glyph">≡</span>
               <span class="rail-label">Toggle Menu</span>
             </button>
+            </div>
             <a class="rail-link active" href="#top" title="Dashboard">
               <span class="rail-code compact-only">DB</span>
               <span class="rail-glyph">DB</span>
@@ -2029,6 +2137,29 @@ async def root() -> str:
               <span class="rail-label">API Docs</span>
             </a>
           </div>
+          <div class="rail-quick">
+            <div class="rail-quick-head">
+              <strong>Quick Access</strong>
+              <span>Links And Endpoints</span>
+            </div>
+            <div class="rail-quick-links">
+              <a class="rail-quick-link" href="/metadata" target="_blank" rel="noreferrer">Metadata</a>
+              <a class="rail-quick-link" href="/schema" target="_blank" rel="noreferrer">Schema</a>
+              <a class="rail-quick-link" href="/project-docs/" target="_blank" rel="noreferrer">Docs</a>
+              <a class="rail-quick-link" href="/openapi.json" target="_blank" rel="noreferrer">OpenAPI JSON</a>
+            </div>
+            <div class="rail-quick-label">Python client</div>
+            <div class="rail-quick-code">from support_triage_env import SupportTriageEnv
+
+env = SupportTriageEnv(base_url="https://your-space-url")
+await env.connect()</div>
+            <div class="rail-quick-label">Core endpoints</div>
+            <div class="rail-quick-code">POST /reset
+POST /step
+GET  /state
+GET  /metadata
+GET  /schema</div>
+          </div>
           <div class="rail-spacer"></div>
           <div class="rail-avatar">
             <span class="rail-code compact-only">AI</span>
@@ -2045,20 +2176,9 @@ async def root() -> str:
                   <span class="brand-mark" aria-hidden="true"></span>
                   <span>TriageOS</span>
                 </div>
-                <label class="search-shell">
-                  <span class="search-label">Search</span>
-                  <input type="search" placeholder="Workflows, tickets, tools" />
-                </label>
               </div>
               <div class="header-actions">
                 <button class="header-icon theme-toggle" id="theme-toggle" type="button">Light Mode</button>
-                <span class="profile-pill">
-                  <span class="profile-avatar">LC</span>
-                  <span class="profile-copy">
-                    <strong>Lily Carter</strong>
-                    <span id="service-meta">Loading metadata...</span>
-                  </span>
-                </span>
               </div>
             </div>
             <div class="eyebrow">
@@ -2216,66 +2336,32 @@ async def root() -> str:
                 <div class="summary-card"><strong>Session Type</strong><span>Single environment review console</span></div>
                 <div class="summary-card"><strong>Output</strong><span>Trace, world summary, tools, schema</span></div>
               </div>
-              <div class="decision-grid">
-                <section class="decision-card">
-                  <span class="section-kicker">Queue Prioritization</span>
-                  <h3>Queue Reading Surface</h3>
-                  <p id="queue-priority-summary">Reset the environment to load the support queue, ticket ordering, and routing recommendations.</p>
-                  <div class="queue-table-wrap">
-                    <table class="queue-table">
-                      <thead>
-                        <tr>
-                          <th>#</th>
-                          <th>Ticket</th>
-                          <th>Global / Team Priority</th>
-                          <th>Expected Route</th>
-                          <th>Status</th>
-                        </tr>
-                      </thead>
-                      <tbody id="queue-priority-body">
-                        <tr><td colspan="5" style="color: var(--muted);">No queue loaded yet.</td></tr>
-                      </tbody>
-                    </table>
+              <div class="runner-workspace">
+                <div class="runner-primary">
+                  <div class="decision-grid">
+                    <section class="decision-card">
+                      <span class="section-kicker">Queue Prioritization</span>
+                      <h3>Queue Reading Surface</h3>
+                      <p id="queue-priority-summary">Reset the environment to load the support queue, ticket ordering, and routing recommendations.</p>
+                      <div class="queue-table-wrap">
+                        <table class="queue-table">
+                          <thead>
+                            <tr>
+                              <th>#</th>
+                              <th>Ticket</th>
+                              <th>Global / Team Priority</th>
+                              <th>Expected Route</th>
+                              <th>Status</th>
+                            </tr>
+                          </thead>
+                          <tbody id="queue-priority-body">
+                            <tr><td colspan="5" style="color: var(--muted);">No queue loaded yet.</td></tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </section>
                   </div>
-                </section>
-                <div class="decision-stack">
-                  <section class="decision-card">
-                    <span class="section-kicker">Focused Ticket</span>
-                    <h3 id="decision-title">Decision Rationale</h3>
-                    <p id="decision-summary">The dashboard will explain why the current ticket is first, what signals were detected, and which team the agent should route it to.</p>
-                    <div class="decision-meta" id="decision-meta">
-                      <span class="decision-pill">No active ticket</span>
-                    </div>
-                    <div class="decision-body">
-                      <div class="decision-row">
-                        <strong>Detected Signals</strong>
-                        <div class="signal-list" id="decision-signals">
-                          <span class="signal-chip">Waiting for queue</span>
-                        </div>
-                      </div>
-                      <div class="decision-row">
-                        <strong>Recommended Next Action</strong>
-                        <p id="decision-next-action">Reset first to let the assistant propose a queue-aware action.</p>
-                      </div>
-                    </div>
-                  </section>
-                  <section class="decision-card">
-                    <span class="section-kicker">Routing Verification</span>
-                    <h3>Escalation Check</h3>
-                    <p id="routing-validation-summary">Expected team, chosen team, and verifier-style routing outcome will appear here.</p>
-                    <div class="decision-meta" id="routing-validation-meta">
-                      <span class="team-match warn">Pending</span>
-                    </div>
-                    <div class="decision-body">
-                      <div class="decision-row">
-                        <strong>Verification Detail</strong>
-                        <p id="routing-validation-detail">No team assignment has been made yet for the current ticket.</p>
-                      </div>
-                    </div>
-                  </section>
-                </div>
-              </div>
-              <div class="control-grid">
+                  <div class="control-grid">
                 <div class="control-card">
                   <div class="helper">Task Family</div>
                   <select id="task">
@@ -2299,9 +2385,9 @@ async def root() -> str:
                   <div class="helper">Assist</div>
                   <button id="fill-sample" type="button">Suggested Action</button>
                 </div>
-              </div>
+                  </div>
 
-              <div class="editor-grid">
+                  <div class="editor-grid">
                 <div>
                   <div class="button-row action-row" style="margin: 0 0 12px;">
                     <button class="primary" id="reset-btn" type="button">Reset</button>
@@ -2330,10 +2416,50 @@ async def root() -> str:
                     <li><code>Refresh Schema</code> keeps the OpenEnv contract visible during review.</li>
                   </ul>
                 </div>
-              </div>
+                  </div>
 
-              <div class="pill" style="margin-top: 12px;">
-                <span class="status-inline"><strong>Console</strong><span>Runner ready for manual actions</span></span>
+                  <div class="pill" style="margin-top: 12px;">
+                    <span class="status-inline"><strong>Console</strong><span>Runner ready for manual actions</span></span>
+                  </div>
+                </div>
+                <div class="runner-secondary">
+                  <div class="decision-stack">
+                    <section class="decision-card">
+                      <span class="section-kicker">Focused Ticket</span>
+                      <h3 id="decision-title">Decision Rationale</h3>
+                      <p id="decision-summary">The dashboard will explain why the current ticket is first, what signals were detected, and which team the agent should route it to.</p>
+                      <div class="decision-meta" id="decision-meta">
+                        <span class="decision-pill">No active ticket</span>
+                      </div>
+                      <div class="decision-body">
+                        <div class="decision-row">
+                          <strong>Detected Signals</strong>
+                          <div class="signal-list" id="decision-signals">
+                            <span class="signal-chip">Waiting for queue</span>
+                          </div>
+                        </div>
+                        <div class="decision-row">
+                          <strong>Recommended Next Action</strong>
+                          <p id="decision-next-action">Reset first to let the assistant propose a queue-aware action.</p>
+                        </div>
+                      </div>
+                    </section>
+                    <section class="decision-card">
+                      <span class="section-kicker">Routing Verification</span>
+                      <h3>Escalation Check</h3>
+                      <p id="routing-validation-summary">Expected team, chosen team, and verifier-style routing outcome will appear here.</p>
+                      <div class="decision-meta" id="routing-validation-meta">
+                        <span class="team-match warn">Pending</span>
+                      </div>
+                      <div class="decision-body">
+                        <div class="decision-row">
+                          <strong>Verification Detail</strong>
+                          <p id="routing-validation-detail">No team assignment has been made yet for the current ticket.</p>
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -2443,7 +2569,6 @@ GET  /schema</div>
       const taskInput = document.getElementById("task");
       const seedInput = document.getElementById("seed");
       const actionInput = document.getElementById("action-json");
-      const serviceMeta = document.getElementById("service-meta");
       const customerRole = document.getElementById("customer-role");
       const customerMeta = document.getElementById("customer-meta");
       const customerBubble = document.getElementById("customer-bubble");
@@ -3132,12 +3257,6 @@ GET  /schema</div>
         renderConversationPanel(observationPayload, statePayload);
         renderWorldPanels(observationPayload, statePayload);
         renderDecisionSurfaces(statePayload);
-      }
-
-      async function loadMetadata() {
-        const response = await fetch("/metadata");
-        const payload = await response.json();
-        serviceMeta.textContent = `${payload.name} v${payload.version || "?"}`;
       }
 
         async function loadSchema() {
@@ -4095,11 +4214,6 @@ GET  /schema</div>
       });
 
       fillSample();
-        loadMetadata().catch((error) => {
-          serviceMeta.textContent = "Metadata unavailable";
-          responseKind.textContent = "error";
-          setFormattedContent(responseJson, { error: "Metadata fetch failed", detail: String(error) });
-        });
         loadSchema().catch((error) => {
           schemaKind.textContent = "error";
           setFormattedContent(schemaJson, { error: "Schema fetch failed", detail: String(error) });
