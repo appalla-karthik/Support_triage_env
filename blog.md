@@ -167,6 +167,7 @@ The strongest completed supervised fine-tuning run produced the best overall pol
 The saved evaluation reports capture the real before/after improvement story:
 
 - classification accuracy improved from `0.2913` to `0.9990`
+<img alt="SFT accuracy" src="https://github.com/appalla-karthik/Support_triage_env/blob/main/blog-assets/graph1.png">
 - environment mean score improved from `0.8201` to `0.9654`
 - success rate improved from `0.55` to `1.00`
 
