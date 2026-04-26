@@ -169,7 +169,12 @@ The saved evaluation reports capture the real before/after improvement story:
 - classification accuracy improved from `0.2913` to `0.9990`
 <img alt="SFT accuracy" src="https://github.com/appalla-karthik/Support_triage_env/blob/main/blog-assets/graph1.png">
 - environment mean score improved from `0.8201` to `0.9654`
+<img alt="SFT accuracy" src="https://github.com/appalla-karthik/Support_triage_env/blob/main/blog-assets/graph2.png">
+  
 - success rate improved from `0.55` to `1.00`
+<img alt="SFT accuracy" src="https://github.com/appalla-karthik/Support_triage_env/blob/main/blog-assets/graph3.png">
+<img alt="SFT accuracy" src="https://github.com/appalla-karthik/Support_triage_env/blob/main/blog-assets/graph4.png">
+  
 
 Additional plots and dashboards are linked from the notebook and README evidence section.
 
