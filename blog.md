@@ -1,7 +1,7 @@
 # TriageOS: World Modeling for Enterprise Support
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/appalla-karthik/Support_triage_env/main/blog-assets/banner.jpeg" alt="TriageOS hero banner" width="100%">
+  <img src="./blog-assets/banner.jpeg" alt="TriageOS hero banner" width="100%">
 </p>
 
 <p align="center">
@@ -112,7 +112,7 @@ This project was built to be trainable with objective feedback:
 ## Product Walkthrough
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/appalla-karthik/Support_triage_env/main/blog-assets/Screenshot%202026-04-26%20100606.png" alt="Main dashboard" width="92%">
+  <img src="./blog-assets/Screenshot%202026-04-26%20100606.png" alt="Main dashboard" width="92%">
 </p>
 
 <p align="center"><strong>Main dashboard:</strong> where incoming tickets, priorities, and queue state become visible to the agent.</p>
@@ -120,13 +120,13 @@ This project was built to be trainable with objective feedback:
 <table>
   <tr>
     <td align="center" width="50%">
-      <img src="https://raw.githubusercontent.com/appalla-karthik/Support_triage_env/main/blog-assets/Screenshot%202026-04-26%20100641.png" alt="Action and control center" width="96%">
+      <img src="./blog-assets/Screenshot%202026-04-26%20100641.png" alt="Action and control center" width="96%">
       <br>
       <strong>Action and control center</strong><br>
       The agent routes, escalates, updates records, and communicates with customers here.
     </td>
     <td align="center" width="50%">
-      <img src="https://raw.githubusercontent.com/appalla-karthik/Support_triage_env/main/blog-assets/Screenshot%202026-04-26%20100715.png" alt="System documentation" width="96%">
+      <img src="./blog-assets/Screenshot%202026-04-26%20100715.png" alt="System documentation" width="96%">
       <br>
       <strong>System documentation</strong><br>
       Structured docs make environment rules, reward logic, and architecture easy to inspect.
@@ -135,7 +135,7 @@ This project was built to be trainable with objective feedback:
 </table>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/appalla-karthik/Support_triage_env/main/blog-assets/dashboard-overview.png" alt="TriageOS dashboard collage" width="94%">
+  <img src="./blog-assets/dashboard-overview.png" alt="TriageOS dashboard collage" width="94%">
 </p>
 
 <p align="center"><em>The environment combines ticket intelligence, tool use, policy grounding, and safe resolution into one operational loop.</em></p>
