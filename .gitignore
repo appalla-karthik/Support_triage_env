@@ -11,5 +11,3 @@ datasets/*.txt
 datasets/*.ipynb
 
 artifacts/unsloth_sft_final/
-
-blog-assets/
