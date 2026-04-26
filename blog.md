@@ -1,7 +1,7 @@
 # TriageOS: World Modeling for Enterprise Support
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/appalla-karthik/Support_triage_env/main/outputs/figures/banner.jpeg" alt="TriageOS hero banner" width="100%">
+  <img src="https://raw.githubusercontent.com/appalla-karthik/Support_triage_env/main/public-assets/banner.jpeg" alt="TriageOS hero banner" width="100%">
 </p>
 
 <p align="center">
@@ -112,7 +112,7 @@ This project was built to be trainable with objective feedback:
 ## Product Walkthrough
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/appalla-karthik/Support_triage_env/main/blog-assets/Screenshot%202026-04-26%20100606.png" alt="Main dashboard" width="92%">
+  <img src="https://raw.githubusercontent.com/appalla-karthik/Support_triage_env/main/public-assets/screenshot-main-dashboard.png" alt="Main dashboard" width="92%">
 </p>
 
 <p align="center"><strong>Main dashboard:</strong> where incoming tickets, priorities, and queue state become visible to the agent.</p>
@@ -120,13 +120,13 @@ This project was built to be trainable with objective feedback:
 <table>
   <tr>
     <td align="center" width="50%">
-      <img src="https://raw.githubusercontent.com/appalla-karthik/Support_triage_env/main/blog-assets/Screenshot%202026-04-26%20100641.png" alt="Action and control center" width="96%">
+      <img src="https://raw.githubusercontent.com/appalla-karthik/Support_triage_env/main/public-assets/screenshot-action-center.png" alt="Action and control center" width="96%">
       <br>
       <strong>Action and control center</strong><br>
       The agent routes, escalates, updates records, and communicates with customers here.
     </td>
     <td align="center" width="50%">
-      <img src="https://raw.githubusercontent.com/appalla-karthik/Support_triage_env/main/blog-assets/Screenshot%202026-04-26%20100715.png" alt="System documentation" width="96%">
+      <img src="https://raw.githubusercontent.com/appalla-karthik/Support_triage_env/main/public-assets/screenshot-docs.png" alt="System documentation" width="96%">
       <br>
       <strong>System documentation</strong><br>
       Structured docs make environment rules, reward logic, and architecture easy to inspect.
@@ -135,7 +135,7 @@ This project was built to be trainable with objective feedback:
 </table>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/appalla-karthik/Support_triage_env/main/blog-assets/dashboard-overview.png" alt="TriageOS dashboard collage" width="94%">
+  <img src="https://raw.githubusercontent.com/appalla-karthik/Support_triage_env/main/public-assets/dashboard-overview.png" alt="TriageOS dashboard collage" width="94%">
 </p>
 
 <p align="center"><em>The environment combines ticket intelligence, tool use, policy grounding, and safe resolution into one operational loop.</em></p>
@@ -164,36 +164,13 @@ The strongest completed supervised fine-tuning run produced the best overall pol
 
 ## Visual Proof Of Training
 
-<table>
-  <tr>
-    <td align="center" width="50%">
-      <img src="https://raw.githubusercontent.com/appalla-karthik/Support_triage_env/main/outputs/figures/train_eval_dashboard.png" alt="Training dashboard" width="98%">
-      <br>
-      <strong>Full training dashboard</strong>
-    </td>
-    <td align="center" width="50%">
-      <img src="https://raw.githubusercontent.com/appalla-karthik/Support_triage_env/main/outputs/figures/train_eval_headline.png" alt="Headline training metrics" width="92%">
-      <br>
-      <strong>Headline before/after metrics</strong>
-    </td>
-  </tr>
-  <tr>
-    <td align="center" width="50%">
-      <img src="https://raw.githubusercontent.com/appalla-karthik/Support_triage_env/main/outputs/figures/train_eval_verify_dashboard.png" alt="Verification dashboard" width="98%">
-      <br>
-      <strong>Verification dashboard</strong>
-    </td>
-    <td align="center" width="50%">
-      <img src="https://raw.githubusercontent.com/appalla-karthik/Support_triage_env/main/outputs/figures/train_eval_verify_headline.png" alt="Verification headline metrics" width="92%">
-      <br>
-      <strong>Verification headline metrics</strong>
-    </td>
-  </tr>
-</table>
+The saved evaluation reports capture the real before/after improvement story:
 
-<p align="center">
-  <em>These plots are generated directly from the saved before/after evaluation reports and are linked to the real training pipeline used in the project.</em>
-</p>
+- classification accuracy improved from `0.2913` to `0.9990`
+- environment mean score improved from `0.8201` to `0.9654`
+- success rate improved from `0.55` to `1.00`
+
+Additional plots and dashboards are linked from the notebook and README evidence section.
 
 ---
 

@@ -9,7 +9,7 @@ tags:
 # TriageOS: Support Triage Env
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/appalla-karthik/Support_triage_env/main/outputs/figures/banner.jpeg" alt="TriageOS banner" width="100%">
+  <img src="https://raw.githubusercontent.com/appalla-karthik/Support_triage_env/main/public-assets/banner.jpeg" alt="TriageOS banner" width="100%">
 </p>
 
 <p align="center">
