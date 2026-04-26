@@ -1,0 +1,15 @@
+.venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+outputs/
+baseline_scores.json
+openenv_support_triage.egg-info/
+.openenv_upstream/
+datasets/*.csv
+datasets/*.txt
+datasets/*.ipynb
+
+artifacts/unsloth_sft_final/
+
+blog-assets/

@@ -1,0 +1,522 @@
+{
+  "rows": 9905,
+  "tasks": [
+    "billing_refund_easy",
+    "export_outage_medium",
+    "security_and_refund_hard",
+    "enterprise_refund_investigation",
+    "incident_coordination_outage",
+    "executive_security_escalation",
+    "escalation_rejection_recovery",
+    "refund_reopen_review",
+    "mixed_queue_command_center",
+    "followup_reprioritization_queue"
+  ],
+  "eval_seeds": [
+    7,
+    11
+  ],
+  "hard_task_ids": [
+    "mixed_queue_command_center",
+    "followup_reprioritization_queue",
+    "escalation_rejection_recovery"
+  ],
+  "hard_task_multiplier": 5,
+  "labels": {
+    "billing_approval": 600,
+    "billing_refund": 2101,
+    "incident_coordination": 3300,
+    "product_bug": 1800,
+    "security_account_takeover": 1804,
+    "security_escalation": 300
+  },
+  "classification": {
+    "heuristic_accuracy": 0.2918,
+    "trained_accuracy": 1.0,
+    "accuracy_delta": 0.7082,
+    "trained_report": {
+      "billing_approval": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 120.0
+      },
+      "billing_refund": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 420.0
+      },
+      "incident_coordination": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 660.0
+      },
+      "product_bug": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 360.0
+      },
+      "security_account_takeover": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 361.0
+      },
+      "security_escalation": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 60.0
+      },
+      "accuracy": 1.0,
+      "macro avg": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 1981.0
+      },
+      "weighted avg": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 1981.0
+      }
+    }
+  },
+  "headline": {
+    "classification_accuracy_delta": 0.7082,
+    "environment_score_delta": 0.1393,
+    "heuristic_success_rate": 0.55,
+    "trained_success_rate": 1.0,
+    "success_rate_delta": 0.45
+  },
+  "environment": {
+    "heuristic_mean_score": 0.8293,
+    "trained_mean_score": 0.9686,
+    "score_delta": 0.1393,
+    "heuristic_summary": {
+      "success_threshold": 0.85,
+      "success_rate": 0.55,
+      "mean_steps": 9.0,
+      "per_task": {
+        "billing_refund_easy": {
+          "mean_score": 0.99,
+          "success_rate": 1.0,
+          "mean_steps": 4.0,
+          "num_runs": 2
+        },
+        "enterprise_refund_investigation": {
+          "mean_score": 0.9,
+          "success_rate": 1.0,
+          "mean_steps": 7.0,
+          "num_runs": 2
+        },
+        "escalation_rejection_recovery": {
+          "mean_score": 0.622,
+          "success_rate": 0.0,
+          "mean_steps": 7.0,
+          "num_runs": 2
+        },
+        "executive_security_escalation": {
+          "mean_score": 0.6451,
+          "success_rate": 0.0,
+          "mean_steps": 12.0,
+          "num_runs": 2
+        },
+        "export_outage_medium": {
+          "mean_score": 0.8334,
+          "success_rate": 0.5,
+          "mean_steps": 5.0,
+          "num_runs": 2
+        },
+        "followup_reprioritization_queue": {
+          "mean_score": 0.7745,
+          "success_rate": 0.0,
+          "mean_steps": 13.0,
+          "num_runs": 2
+        },
+        "incident_coordination_outage": {
+          "mean_score": 0.99,
+          "success_rate": 1.0,
+          "mean_steps": 7.0,
+          "num_runs": 2
+        },
+        "mixed_queue_command_center": {
+          "mean_score": 0.96,
+          "success_rate": 1.0,
+          "mean_steps": 20.0,
+          "num_runs": 2
+        },
+        "refund_reopen_review": {
+          "mean_score": 0.9,
+          "success_rate": 1.0,
+          "mean_steps": 7.0,
+          "num_runs": 2
+        },
+        "security_and_refund_hard": {
+          "mean_score": 0.6783,
+          "success_rate": 0.0,
+          "mean_steps": 8.0,
+          "num_runs": 2
+        }
+      }
+    },
+    "trained_summary": {
+      "success_threshold": 0.85,
+      "success_rate": 1.0,
+      "mean_steps": 8.1,
+      "per_task": {
+        "billing_refund_easy": {
+          "mean_score": 0.99,
+          "success_rate": 1.0,
+          "mean_steps": 4.0,
+          "num_runs": 2
+        },
+        "enterprise_refund_investigation": {
+          "mean_score": 0.99,
+          "success_rate": 1.0,
+          "mean_steps": 7.0,
+          "num_runs": 2
+        },
+        "escalation_rejection_recovery": {
+          "mean_score": 0.952,
+          "success_rate": 1.0,
+          "mean_steps": 7.0,
+          "num_runs": 2
+        },
+        "executive_security_escalation": {
+          "mean_score": 0.99,
+          "success_rate": 1.0,
+          "mean_steps": 7.0,
+          "num_runs": 2
+        },
+        "export_outage_medium": {
+          "mean_score": 0.99,
+          "success_rate": 1.0,
+          "mean_steps": 5.0,
+          "num_runs": 2
+        },
+        "followup_reprioritization_queue": {
+          "mean_score": 0.9343,
+          "success_rate": 1.0,
+          "mean_steps": 9.0,
+          "num_runs": 2
+        },
+        "incident_coordination_outage": {
+          "mean_score": 0.99,
+          "success_rate": 1.0,
+          "mean_steps": 7.0,
+          "num_runs": 2
+        },
+        "mixed_queue_command_center": {
+          "mean_score": 0.96,
+          "success_rate": 1.0,
+          "mean_steps": 20.0,
+          "num_runs": 2
+        },
+        "refund_reopen_review": {
+          "mean_score": 0.9,
+          "success_rate": 1.0,
+          "mean_steps": 7.0,
+          "num_runs": 2
+        },
+        "security_and_refund_hard": {
+          "mean_score": 0.99,
+          "success_rate": 1.0,
+          "mean_steps": 8.0,
+          "num_runs": 2
+        }
+      }
+    },
+    "heuristic_runs": [
+      {
+        "task_id": "billing_refund_easy",
+        "seed": 7,
+        "score": 0.99,
+        "success": true,
+        "steps": 4
+      },
+      {
+        "task_id": "billing_refund_easy",
+        "seed": 11,
+        "score": 0.99,
+        "success": true,
+        "steps": 4
+      },
+      {
+        "task_id": "export_outage_medium",
+        "seed": 7,
+        "score": 0.8667,
+        "success": true,
+        "steps": 5
+      },
+      {
+        "task_id": "export_outage_medium",
+        "seed": 11,
+        "score": 0.8,
+        "success": false,
+        "steps": 5
+      },
+      {
+        "task_id": "security_and_refund_hard",
+        "seed": 7,
+        "score": 0.8,
+        "success": false,
+        "steps": 8
+      },
+      {
+        "task_id": "security_and_refund_hard",
+        "seed": 11,
+        "score": 0.5566,
+        "success": false,
+        "steps": 8
+      },
+      {
+        "task_id": "enterprise_refund_investigation",
+        "seed": 7,
+        "score": 0.9,
+        "success": true,
+        "steps": 7
+      },
+      {
+        "task_id": "enterprise_refund_investigation",
+        "seed": 11,
+        "score": 0.9,
+        "success": true,
+        "steps": 7
+      },
+      {
+        "task_id": "incident_coordination_outage",
+        "seed": 7,
+        "score": 0.99,
+        "success": true,
+        "steps": 7
+      },
+      {
+        "task_id": "incident_coordination_outage",
+        "seed": 11,
+        "score": 0.99,
+        "success": true,
+        "steps": 7
+      },
+      {
+        "task_id": "executive_security_escalation",
+        "seed": 7,
+        "score": 0.6451,
+        "success": false,
+        "steps": 12
+      },
+      {
+        "task_id": "executive_security_escalation",
+        "seed": 11,
+        "score": 0.6451,
+        "success": false,
+        "steps": 12
+      },
+      {
+        "task_id": "escalation_rejection_recovery",
+        "seed": 7,
+        "score": 0.622,
+        "success": false,
+        "steps": 7
+      },
+      {
+        "task_id": "escalation_rejection_recovery",
+        "seed": 11,
+        "score": 0.622,
+        "success": false,
+        "steps": 7
+      },
+      {
+        "task_id": "refund_reopen_review",
+        "seed": 7,
+        "score": 0.9,
+        "success": true,
+        "steps": 7
+      },
+      {
+        "task_id": "refund_reopen_review",
+        "seed": 11,
+        "score": 0.9,
+        "success": true,
+        "steps": 7
+      },
+      {
+        "task_id": "mixed_queue_command_center",
+        "seed": 7,
+        "score": 0.96,
+        "success": true,
+        "steps": 20
+      },
+      {
+        "task_id": "mixed_queue_command_center",
+        "seed": 11,
+        "score": 0.96,
+        "success": true,
+        "steps": 20
+      },
+      {
+        "task_id": "followup_reprioritization_queue",
+        "seed": 7,
+        "score": 0.7745,
+        "success": false,
+        "steps": 13
+      },
+      {
+        "task_id": "followup_reprioritization_queue",
+        "seed": 11,
+        "score": 0.7745,
+        "success": false,
+        "steps": 13
+      }
+    ],
+    "trained_runs": [
+      {
+        "task_id": "billing_refund_easy",
+        "seed": 7,
+        "score": 0.99,
+        "success": true,
+        "steps": 4
+      },
+      {
+        "task_id": "billing_refund_easy",
+        "seed": 11,
+        "score": 0.99,
+        "success": true,
+        "steps": 4
+      },
+      {
+        "task_id": "export_outage_medium",
+        "seed": 7,
+        "score": 0.99,
+        "success": true,
+        "steps": 5
+      },
+      {
+        "task_id": "export_outage_medium",
+        "seed": 11,
+        "score": 0.99,
+        "success": true,
+        "steps": 5
+      },
+      {
+        "task_id": "security_and_refund_hard",
+        "seed": 7,
+        "score": 0.99,
+        "success": true,
+        "steps": 8
+      },
+      {
+        "task_id": "security_and_refund_hard",
+        "seed": 11,
+        "score": 0.99,
+        "success": true,
+        "steps": 8
+      },
+      {
+        "task_id": "enterprise_refund_investigation",
+        "seed": 7,
+        "score": 0.99,
+        "success": true,
+        "steps": 7
+      },
+      {
+        "task_id": "enterprise_refund_investigation",
+        "seed": 11,
+        "score": 0.99,
+        "success": true,
+        "steps": 7
+      },
+      {
+        "task_id": "incident_coordination_outage",
+        "seed": 7,
+        "score": 0.99,
+        "success": true,
+        "steps": 7
+      },
+      {
+        "task_id": "incident_coordination_outage",
+        "seed": 11,
+        "score": 0.99,
+        "success": true,
+        "steps": 7
+      },
+      {
+        "task_id": "executive_security_escalation",
+        "seed": 7,
+        "score": 0.99,
+        "success": true,
+        "steps": 7
+      },
+      {
+        "task_id": "executive_security_escalation",
+        "seed": 11,
+        "score": 0.99,
+        "success": true,
+        "steps": 7
+      },
+      {
+        "task_id": "escalation_rejection_recovery",
+        "seed": 7,
+        "score": 0.952,
+        "success": true,
+        "steps": 7
+      },
+      {
+        "task_id": "escalation_rejection_recovery",
+        "seed": 11,
+        "score": 0.952,
+        "success": true,
+        "steps": 7
+      },
+      {
+        "task_id": "refund_reopen_review",
+        "seed": 7,
+        "score": 0.9,
+        "success": true,
+        "steps": 7
+      },
+      {
+        "task_id": "refund_reopen_review",
+        "seed": 11,
+        "score": 0.9,
+        "success": true,
+        "steps": 7
+      },
+      {
+        "task_id": "mixed_queue_command_center",
+        "seed": 7,
+        "score": 0.96,
+        "success": true,
+        "steps": 20
+      },
+      {
+        "task_id": "mixed_queue_command_center",
+        "seed": 11,
+        "score": 0.96,
+        "success": true,
+        "steps": 20
+      },
+      {
+        "task_id": "followup_reprioritization_queue",
+        "seed": 7,
+        "score": 0.9343,
+        "success": true,
+        "steps": 9
+      },
+      {
+        "task_id": "followup_reprioritization_queue",
+        "seed": 11,
+        "score": 0.9343,
+        "success": true,
+        "steps": 9
+      }
+    ]
+  },
+  "artifacts": {
+    "model_output": "outputs/triageos_classifier.pkl"
+  }
+}
